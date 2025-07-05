@@ -22,13 +22,13 @@ namespace kittens {
 namespace ducks {
 /**
  * @namespace rt
- * 
+ *
  * @brief The namespace where concepts and abstract types for register tiles live.
  */
 namespace rt {
 /**
  * @brief A dummy type used to identify register tiles.
- * 
+ *
  * For a type to quack like an rt, it should define its identifier as ducks::rt::identifier.
  * If a type quacks like ducks::rt::identifier, it will be treated as an rt by compiler checks.
  */
@@ -48,7 +48,7 @@ struct identifier {};
  * for operations on tiles that are composed of smaller subtiles. It supports both
  * row-major and column-major layouts and includes helper structs for type inference
  * in vector maps.
- * 
+ *
  * In general, you probably want a row-major tile, unless you specifically want to call mma
  */
 template<typename _T, int _rows, int _cols, ducks::rt_layout::all _layout=ducks::rt_layout::row>

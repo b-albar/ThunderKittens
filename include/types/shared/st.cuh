@@ -307,13 +307,13 @@ __device__ inline void print(const ST& tile) {
 
                 // Print value based on type
                 if constexpr (std::is_same_v<typename ST::dtype, float>) {
-                    printf("%.3f", tile[{r,c}]);
+                    printf("%.4f", tile[{r,c}]);
                 } else if constexpr (std::is_same_v<typename ST::dtype, __nv_bfloat16>) {
-                    printf("%.3f", __bfloat162float(tile[{r,c}]));
+                    printf("%.4f", __bfloat162float(tile[{r,c}]));
                 } else if constexpr (std::is_integral_v<typename ST::dtype>) {
                     printf("%d", (int)tile[{r,c}]);
                 } else {
-                    printf("%.3f", (float)tile[{r,c}]);
+                    printf("%.4f", (float)tile[{r,c}]);
                 }
 
                 // Add comma except for last element
