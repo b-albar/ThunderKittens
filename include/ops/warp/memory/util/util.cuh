@@ -171,6 +171,51 @@ template<> struct move<fp8e5m2_4> {
 };
 #endif
 
+/* ----------   Atomic operations  ---------- */
+
+// unpacked types
+template<typename T> struct atomic {
+    __device__ static inline void add(uint32_t dst, const T& src);
+};
+
+template<> struct atomic<bf16> {
+    __device__ static inline void add(uint32_t dst, const bf16& src) {
+       asm volatile("red.shared.add.noftz.bf16 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+};
+
+template<> struct atomic<bf16_2> {
+    __device__ static inline void add(uint32_t dst, const bf16_2& src) {
+        asm volatile("red.shared.add.noftz.bf16x2 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+};
+
+template<> struct atomic<half> {
+    __device__ static inline void add(uint32_t dst, const half& src) {
+        asm volatile("red.shared.add.noftz.f16 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+};
+
+template<> struct atomic<half_2> {
+    __device__ static inline void add(uint32_t dst, const half_2& src) {
+        asm volatile("red.shared.add.noftz.f16x2 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+};
+
+template<> struct atomic<float2> {
+    __device__ static inline void add(uint32_t dst, const float2& src) {
+        asm volatile("red.shared.v2.f32.add [%2], {%0, %1};\n" : : "f"(src.x), "f"(src.y), "r"(dst));
+    }
+};
+
+template<> struct atomic<float4> {
+    __device__ static inline void add(uint32_t dst, const float4& src) {
+        asm volatile("red.shared.v4.f32.add [%2], {%0, %1, %2, %3};\n" : : "f"(src.x), "f"(src.y), "f"(src.z), "f"(src.w), "r"(dst));
+    }
+};
+
+
+
 /* ----------   Constants for Cache policies  ---------- */
 
 enum cache_policy {
@@ -218,7 +263,7 @@ template<int num_warps> struct barrier {
 __device__ static inline void init_semaphore(semaphore& bar, int thread_count, int transaction_count) {
     if (::kittens::laneid() == 0) {
         void const* const ptr = &bar;
-        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr)); 
+        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
 
         asm volatile (
             "mbarrier.init.shared::cta.b64 [%0], %1;\n"
@@ -235,7 +280,7 @@ __device__ static inline void init_semaphore(semaphore& bar, int thread_count, i
 __device__ static inline void invalidate_semaphore(semaphore& bar) {
     if (::kittens::laneid() == 0) {
         void const* const ptr = &bar;
-        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr)); 
+        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
         asm volatile (
             "mbarrier.inval.shared::cta.b64 [%0];\n"
             :: "r"(bar_ptr)
@@ -252,7 +297,7 @@ __device__ static inline void invalidate_semaphore(semaphore& bar) {
 * @param kPhaseBit The phase bit used for the semaphore.
 */
 __device__ static inline void arrive(semaphore& sem) {
-    uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(&sem)); 
+    uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(&sem));
     asm volatile (
         "mbarrier.arrive.release.cta.shared::cta.b64 _, [%0];\n"
         :
@@ -292,7 +337,7 @@ __device__ static inline void arrive(semaphore& sem, uint32_t count) {
 */
 __device__ static inline void wait(semaphore& sem, int kPhaseBit) {
     void const* const ptr = &sem;
-    uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr)); 
+    uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
 
 #ifdef KITTENS_HOPPER
     asm volatile (
