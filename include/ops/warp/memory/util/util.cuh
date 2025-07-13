@@ -175,42 +175,67 @@ template<> struct move<fp8e5m2_4> {
 
 // unpacked types
 template<typename T> struct atomic {
-    __device__ static inline void add(uint32_t dst, const T& src);
+    __device__ static inline void adds(uint32_t dst, const T& src);
+    __device__ static inline void addg(T* dst, const T& src);
 };
 
 template<> struct atomic<bf16> {
-    __device__ static inline void add(uint32_t dst, const bf16& src) {
+    __device__ static inline void adds(uint32_t dst, const bf16& src) {
        asm volatile("red.shared.add.noftz.bf16 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+
+    __device__ static inline void addg(bf16* dst, const bf16& src) {
+        asm volatile("red.global.add.noftz.bf16 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "l"(dst));
     }
 };
 
 template<> struct atomic<bf16_2> {
-    __device__ static inline void add(uint32_t dst, const bf16_2& src) {
+    __device__ static inline void adds(uint32_t dst, const bf16_2& src) {
         asm volatile("red.shared.add.noftz.bf16x2 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+
+    __device__ static inline void addg(bf16_2* dst, const bf16_2& src) {
+        asm volatile("red.global.add.noftz.bf16x2 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "l"(dst));
     }
 };
 
 template<> struct atomic<half> {
-    __device__ static inline void add(uint32_t dst, const half& src) {
+    __device__ static inline void adds(uint32_t dst, const half& src) {
         asm volatile("red.shared.add.noftz.f16 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+
+    __device__ static inline void addg(half* dst, const half& src) {
+        asm volatile("red.global.add.noftz.f16 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "l"(dst));
     }
 };
 
 template<> struct atomic<half_2> {
-    __device__ static inline void add(uint32_t dst, const half_2& src) {
+    __device__ static inline void adds(uint32_t dst, const half_2& src) {
         asm volatile("red.shared.add.noftz.f16x2 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "r"(dst));
+    }
+
+    __device__ static inline void addg(half_2* dst, const half_2& src) {
+        asm volatile("red.global.add.noftz.f16x2 [%1], %0;\n" : : "r"(*(uint32_t*)&src), "l"(dst));
     }
 };
 
 template<> struct atomic<float2> {
-    __device__ static inline void add(uint32_t dst, const float2& src) {
+    __device__ static inline void adds(uint32_t dst, const float2& src) {
         asm volatile("red.shared.v2.f32.add [%2], {%0, %1};\n" : : "f"(src.x), "f"(src.y), "r"(dst));
+    }
+
+    __device__ static inline void addg(float2* dst, const float2& src) {
+        asm volatile("red.global.v2.f32.add [%2], {%0, %1};\n" : : "f"(src.x), "f"(src.y), "l"(dst));
     }
 };
 
 template<> struct atomic<float4> {
-    __device__ static inline void add(uint32_t dst, const float4& src) {
+    __device__ static inline void adds(uint32_t dst, const float4& src) {
         asm volatile("red.shared.v4.f32.add [%2], {%0, %1, %2, %3};\n" : : "f"(src.x), "f"(src.y), "f"(src.z), "f"(src.w), "r"(dst));
+    }
+
+    __device__ static inline void addg(float4* dst, const float4& src) {
+        asm volatile("red.global.v4.f32.add [%2], {%0, %1, %2, %3};\n" : : "f"(src.x), "f"(src.y), "f"(src.z), "f"(src.w), "l"(dst));
     }
 };
 

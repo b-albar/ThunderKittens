@@ -305,7 +305,6 @@ __device__ inline static void atomic_add(ST &dst, const RT &src) {
     static_assert(RT::height == ST::height, "register tile and shared tile must match height");
     static_assert(RT::width  == ST::width,  "register tile and shared tile must match width");
 
-
     static_assert(sizeof(typename ST::dtype) != 1, "atomic_add is not supported for this type");
 
     using T2 = RT::dtype;
@@ -333,21 +332,21 @@ __device__ inline static void atomic_add(ST &dst, const RT &src) {
                 if constexpr (std::is_same_v<typename RT::layout, ducks::rt_layout::row>) {
                     int row = i*src.tile_size_row + (laneid / 4);
                     int col = j*src.tile_size_col + 2*(laneid % 4);
-                    atomic<U2>::add(dst.idx(shared_addr, {row+0, col+0}), tmp[0]);
-                    atomic<U2>::add(dst.idx(shared_addr, {row+8, col+0}), tmp[1]);
-                    atomic<U2>::add(dst.idx(shared_addr, {row+0, col+8}), tmp[2]);
-                    atomic<U2>::add(dst.idx(shared_addr, {row+8, col+8}), tmp[3]);
+                    atomic<U2>::adds(dst.idx(shared_addr, {row+0, col+0}), tmp[0]);
+                    atomic<U2>::adds(dst.idx(shared_addr, {row+8, col+0}), tmp[1]);
+                    atomic<U2>::adds(dst.idx(shared_addr, {row+0, col+8}), tmp[2]);
+                    atomic<U2>::adds(dst.idx(shared_addr, {row+8, col+8}), tmp[3]);
                 } else {
                     int row = i*src.tile_size_row + 2*(laneid % 4);
                     int col = j*src.tile_size_col + (laneid / 4);
-                    atomic<U>::add(dst.idx(shared_addr, {row+0, col+0}), tmp[0].x);
-                    atomic<U>::add(dst.idx(shared_addr, {row+1, col+0}), tmp[0].y);
-                    atomic<U>::add(dst.idx(shared_addr, {row+0, col+8}), tmp[1].x);
-                    atomic<U>::add(dst.idx(shared_addr, {row+1, col+8}), tmp[1].y);
-                    atomic<U>::add(dst.idx(shared_addr, {row+8, col+0}), tmp[2].x);
-                    atomic<U>::add(dst.idx(shared_addr, {row+9, col+0}), tmp[2].y);
-                    atomic<U>::add(dst.idx(shared_addr, {row+8, col+8}), tmp[3].x);
-                    atomic<U>::add(dst.idx(shared_addr, {row+9, col+8}), tmp[3].y);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+0, col+0}), tmp[0].x);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+1, col+0}), tmp[0].y);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+0, col+8}), tmp[1].x);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+1, col+8}), tmp[1].y);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+8, col+0}), tmp[2].x);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+9, col+0}), tmp[2].y);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+8, col+8}), tmp[3].x);
+                    atomic<U>::adds(dst.idx(shared_addr, {row+9, col+8}), tmp[3].y);
                 }
             } else if constexpr (std::is_same_v<typename RT::layout, ducks::rt_layout::row> && sizeof(typename ST::dtype) == 4) {
                 // handle the row-major layout for 32-bit types
@@ -386,14 +385,14 @@ __device__ inline static void atomic_add(ST &dst, const RT &src) {
                 const uint32_t addr_2 = shared_addr + sizeof(U)*(outer_idx*ST::underlying_rows*subtile_cols + (row+8)*subtile_cols + col%subtile_cols);
                 const int swizzle_1 = blit ^ ((addr_1 % swizzle_repeat) >> 7) << 4;
                 const int swizzle_2 = blit ^ ((addr_2 % swizzle_repeat) >> 7) << 4;
-                atomic<U>::add((addr_1+ 0)^swizzle_1, tmp[0].x);
-                atomic<U>::add((addr_1+ 4)^swizzle_1, tmp[0].y);
-                atomic<U>::add((addr_1+32)^swizzle_1, tmp[2].x);
-                atomic<U>::add((addr_1+36)^swizzle_1, tmp[2].y);
-                atomic<U>::add((addr_2+ 0)^swizzle_2, tmp[1].x);
-                atomic<U>::add((addr_2+ 4)^swizzle_2, tmp[1].y);
-                atomic<U>::add((addr_2+32)^swizzle_2, tmp[3].x);
-                atomic<U>::add((addr_2+36)^swizzle_2, tmp[3].y);
+                atomic<U>::adds((addr_1+ 0)^swizzle_1, tmp[0].x);
+                atomic<U>::adds((addr_1+ 4)^swizzle_1, tmp[0].y);
+                atomic<U>::adds((addr_1+32)^swizzle_1, tmp[2].x);
+                atomic<U>::adds((addr_1+36)^swizzle_1, tmp[2].y);
+                atomic<U>::adds((addr_2+ 0)^swizzle_2, tmp[1].x);
+                atomic<U>::adds((addr_2+ 4)^swizzle_2, tmp[1].y);
+                atomic<U>::adds((addr_2+32)^swizzle_2, tmp[3].x);
+                atomic<U>::adds((addr_2+36)^swizzle_2, tmp[3].y);
             }
             else if constexpr (sizeof(typename ST::dtype) != 1) {
                 // handle the column-major layout
@@ -404,14 +403,14 @@ __device__ inline static void atomic_add(ST &dst, const RT &src) {
                 tmp[1] = base_types::convertor<U2, T2>::convert(src.tiles[i][j].data[1]);
                 tmp[2] = base_types::convertor<U2, T2>::convert(src.tiles[i][j].data[2]);
                 tmp[3] = base_types::convertor<U2, T2>::convert(src.tiles[i][j].data[3]);
-                atomic<U>::add(dst.idx(shared_addr, {row+0, col+0}), tmp[0].x);
-                atomic<U>::add(dst.idx(shared_addr, {row+1, col+0}), tmp[0].y);
-                atomic<U>::add(dst.idx(shared_addr, {row+0, col+8}), tmp[1].x);
-                atomic<U>::add(dst.idx(shared_addr, {row+1, col+8}), tmp[1].y);
-                atomic<U>::add(dst.idx(shared_addr, {row+8, col+0}), tmp[2].x);
-                atomic<U>::add(dst.idx(shared_addr, {row+9, col+0}), tmp[2].y);
-                atomic<U>::add(dst.idx(shared_addr, {row+8, col+8}), tmp[3].x);
-                atomic<U>::add(dst.idx(shared_addr, {row+9, col+8}), tmp[3].y);
+                atomic<U>::adds(dst.idx(shared_addr, {row+0, col+0}), tmp[0].x);
+                atomic<U>::adds(dst.idx(shared_addr, {row+1, col+0}), tmp[0].y);
+                atomic<U>::adds(dst.idx(shared_addr, {row+0, col+8}), tmp[1].x);
+                atomic<U>::adds(dst.idx(shared_addr, {row+1, col+8}), tmp[1].y);
+                atomic<U>::adds(dst.idx(shared_addr, {row+8, col+0}), tmp[2].x);
+                atomic<U>::adds(dst.idx(shared_addr, {row+9, col+0}), tmp[2].y);
+                atomic<U>::adds(dst.idx(shared_addr, {row+8, col+8}), tmp[3].x);
+                atomic<U>::adds(dst.idx(shared_addr, {row+9, col+8}), tmp[3].y);
             }
         }
     }
