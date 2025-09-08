@@ -15,13 +15,13 @@ namespace kittens {
 namespace ducks {
 /**
  * @namespace rt
- * 
+ *
  * @brief The namespace where concepts and abstract types for shared tiles live.
  */
 namespace st {
 /**
  * @brief A dummy type used to identify shared tiles.
- * 
+ *
  * For a type to quack like an st, it should define its identifier as ducks::st::identifier.
  * If a type quacks like ducks::st::identifier, it will be treated as an st by compiler checks.
  * This is particularly useful for subtiles.
@@ -295,51 +295,80 @@ template<int _height, int _width> using st_fp8e8m0 = st<fp8e8m0, _height, _width
 
 /**
  * @brief Print the contents of a shared tile as a formatted table.
- * 
+ *
  * This function should be called by a single thread in the warp.
  * It will print the entire tile atomically to avoid interleaved output.
- * 
+ *
  * @param tile The shared tile to print
  */
 template<ducks::st::all ST>
 __device__ inline void print(const ST& tile) {
-    printf("Shared Tile %dx%d:\n", ST::rows, ST::cols);
-    
-    // Print column headers
-    printf("     "); // Padding for row indices
-    for (int c = 0; c < ST::cols; c++) {
-        printf("%8d ", c);
-    }
-    printf("\n");
-    
-    // Print separator line
-    printf("     ");
-    for (int c = 0; c < ST::cols; c++) {
-        printf("--------+");
-    }
-    printf("\n");
-    
-    // Print data rows
-    for (int r = 0; r < ST::rows; r++) {
-        printf("%3d |", r); // Row index
-        for (int c = 0; c < ST::cols; c++) {
-            if constexpr (std::is_same_v<typename ST::dtype, fp8e4m3>) {
-                printf("%8.3f ", static_cast<float>(tile[{r,c}]));
-            } else if constexpr (std::is_same_v<typename ST::dtype, fp8e8m0>) {
-                printf("%8.3f ", static_cast<float>(tile[{r,c}]));
-            } else if constexpr (std::is_same_v<typename ST::dtype, float>) {
-                printf("%8.3f ", tile[{r,c}]);
-            } else if constexpr (std::is_same_v<typename ST::dtype, __nv_bfloat16>) {
-                printf("%8.3f ", __bfloat162float(tile[{r,c}]));
-            } else if constexpr (std::is_integral_v<typename ST::dtype>) {
-                printf("%8d ", (int)tile[{r,c}]);
+    if (laneid() == 0) { // Only first thread in warp prints
+        printf("Shared Tile(%d, %d)[\n", ST::rows, ST::cols);
+
+        // Maximum number of rows/columns to display before truncating
+        constexpr int max_display_rows = 6;
+        constexpr int max_display_cols = 10;
+
+        // Calculate how many rows/cols to show at beginning and end
+        const int show_rows_begin = (ST::rows <= max_display_rows) ? ST::rows : max_display_rows / 2;
+        const int show_rows_end = (ST::rows <= max_display_rows) ? 0 : max_display_rows / 2;
+        const int show_cols_begin = (ST::cols <= max_display_cols) ? ST::cols : max_display_cols / 2;
+        const int show_cols_end = (ST::cols <= max_display_cols) ? 0 : max_display_cols / 2;
+
+        // Print rows
+        for (int r = 0; r < ST::rows; r++) {
+            // Skip middle rows if needed
+            if (r >= show_rows_begin && r < ST::rows - show_rows_end) {
+                if (r == show_rows_begin) {
+                    printf("  ...\n");
+                }
+                continue;
+            }
+
+            printf("  [");
+
+            // Print columns for this row
+            for (int c = 0; c < ST::cols; c++) {
+                // Skip middle columns if needed
+                if (c >= show_cols_begin && c < ST::cols - show_cols_end) {
+                    if (c == show_cols_begin) {
+                        printf(" ... ");
+                    }
+                    continue;
+                }
+
+                // Print value based on type
+                if constexpr (std::is_same_v<typename ST::dtype, float>) {
+                    printf("%.4f", tile[{r,c}]);
+                } else if constexpr (std::is_same_v<typename ST::dtype, __nv_bfloat16>) {
+                    printf("%.4f", __bfloat162float(tile[{r,c}]));
+                } else if constexpr (std::is_same_v<typename ST::dtype, fp8e4m3>) {
+                        printf("%.4f ", static_cast<float>(tile[{r,c}]));
+                } else if constexpr (std::is_same_v<typename ST::dtype, fp8e8m0>) {
+                        printf("%.4f ", static_cast<float>(tile[{r,c}]));
+                } else if constexpr (std::is_integral_v<typename ST::dtype>) {
+                    printf("%d", (int)tile[{r,c}]);
+                } else {
+                    printf("%.4f", (float)tile[{r,c}]);
+                }
+
+                // Add comma except for last element
+                if (c < ST::cols - 1 && (c < show_cols_begin - 1 || c >= ST::cols - show_cols_end)) {
+                    printf(", ");
+                }
+            }
+
+            // End of row
+            if (r < ST::rows - 1) {
+                printf("],\n");
             } else {
-                printf("%8.3f ", (float)tile[{r,c}]);
+                printf("]\n");
             }
         }
-        printf("\n");
+
+        printf("]\n");
     }
-    printf("\n");
 }
 
 }

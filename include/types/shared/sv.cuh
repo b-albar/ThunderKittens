@@ -17,13 +17,13 @@ namespace kittens {
 namespace ducks {
 /**
  * @namespace sv
- * 
+ *
  * @brief The namespace where concepts and abstract types for shared vectors live.
  */
 namespace sv {
 /**
  * @brief A dummy type used to identify shared vectors.
- * 
+ *
  * For a type to quack like an sv, it should define its identifier as ducks::sv::identifier.
  * If a type quacks like ducks::sv::identifier, it will be treated as an sv by compiler checks.
  */
@@ -104,25 +104,51 @@ template<size_t _length> using sv_fl = sv<float, _length>;
 
 /* ----------  PRINTOUTS  ---------- */
 
+/* ----------  PRINTOUTS  ---------- */
+
 template<ducks::sv::all SV>
 __device__ inline void print(const SV& sv) {
-    printf("Shared Vector %d:\n", SV::length);
-    for(int i = 0; i < SV::length; i++) {
-        if constexpr (std::is_same_v<typename SV::dtype, fp8e4m3>) {
-            printf("%f ", static_cast<float>(sv[i]));
-        } else if constexpr (std::is_same_v<typename SV::dtype, fp8e8m0>) {
-            printf("%f ", static_cast<float>(sv[i]));
-        } else if constexpr (std::is_same_v<typename SV::dtype, bf16>) {
-            printf("%f ", __bfloat162float(sv[i]));
-        } else if constexpr (std::is_same_v<typename SV::dtype, half>) {
-            printf("%f ", __half2float(sv[i]));
-        } else if constexpr (std::is_same_v<typename SV::dtype, float>) {
-            printf("%f ", sv[i]);
-        } else {
-            printf("%d ", (int)(sv[i]));
+    if(laneid() == 0) {
+        printf("Shared Vector %d: [", SV::length);
+
+        // Maximum number of elements to display before truncating
+        constexpr int max_display = 10;
+
+        // Calculate how many elements to show at beginning and end
+        const int show_begin = (SV::length <= max_display) ? SV::length : max_display / 2;
+        const int show_end = (SV::length <= max_display) ? 0 : max_display / 2;
+
+        for(int i = 0; i < SV::length; i++) {
+            // Skip middle elements if needed
+            if(i >= show_begin && i < SV::length - show_end) {
+                if(i == show_begin) {
+                    printf("... ");
+                }
+                continue;
+            }
+
+            // Print value based on type
+            if constexpr (std::is_same_v<typename SV::dtype, bf16>) {
+                printf("%f", __bfloat162float(sv[i]));
+            } else if constexpr (std::is_same_v<typename SV::dtype, half>) {
+                printf("%f", __half2float(sv[i]));
+            } else if constexpr (std::is_same_v<typename SV::dtype, fp8e4m3>) {
+                printf("%f ", static_cast<float>(sv[i]));
+            } else if constexpr (std::is_same_v<typename SV::dtype, fp8e8m0>) {
+                printf("%f ", static_cast<float>(sv[i]));
+            } else if constexpr (std::is_same_v<typename SV::dtype, float>) {
+                printf("%f", sv[i]);
+            } else {
+                printf("%d", (int)(sv[i]));
+            }
+
+            // Add comma except for last element
+            if(i < SV::length - 1 && (i < show_begin - 1 || i >= SV::length - show_end)) {
+                printf(", ");
+            }
         }
+        printf("]\n");
     }
-    printf("\n");
 }
 
 } // namespace kittens
