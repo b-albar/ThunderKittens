@@ -187,16 +187,31 @@ void initialize(T **d_i, T **d_o, std::vector<float> &i_ref, std::vector<float> 
 
 // Initializer for multi-gpu tests
 template<int NUM_DEVICES, typename T, initializers initializer=initializers::RANDOM, int SEED=42>
-static void initialize(int *device_ids, T **d_i_arr, T **d_o_arr, std::vector<std::vector<float>> &i_ref, std::vector<std::vector<float>> &o_ref) {
-
+static void initialize(
+    T **d_i_arr,
+    T **d_o_arr,
+    T **d_i_mc,
+    T **d_o_mc,
+    size_t *d_i_alloc_size,
+    size_t *d_o_alloc_size,
+    size_t *d_i_mc_alloc_size,
+    size_t *d_o_mc_alloc_size,
+    std::vector<std::vector<float>> &i_ref, 
+    std::vector<std::vector<float>> &o_ref
+) {
+    
     const int input_size  = i_ref[0].size();
     const int output_size = o_ref[0].size();
-
+    
     // Initialize matrices
     std::vector<T> i_t(input_size);
-
+    
     std::mt19937 gen(SEED); // Standard mersenne_twister_engine
     std::uniform_real_distribution<float> dis(-1.0, 1.0);
+
+    kittens::detail::vmm::handle d_i_mc_handle;
+    kittens::detail::vmm::handle d_o_mc_handle;
+
     for (int dev_idx = 0; dev_idx < NUM_DEVICES; ++dev_idx) {
         for(int idx = 0; idx < input_size; idx++) {
             float f;
@@ -227,11 +242,32 @@ static void initialize(int *device_ids, T **d_i_arr, T **d_o_arr, std::vector<st
         }
 
         cudaSetDevice(dev_idx);
-        kittens::pglCudaMalloc<true>(NUM_DEVICES, device_ids, dev_idx, &d_i_arr[dev_idx], input_size * sizeof(T));
-        kittens::pglCudaMalloc<true>(NUM_DEVICES, device_ids, dev_idx, &d_o_arr[dev_idx], output_size * sizeof(T));
+        kittens::detail::vmm::vm_alloc_map_set_access((void **)&d_i_arr[dev_idx], d_i_alloc_size, input_size * sizeof(T), dev_idx, NUM_DEVICES);
+        kittens::detail::vmm::vm_alloc_map_set_access((void **)&d_o_arr[dev_idx], d_o_alloc_size, output_size * sizeof(T), dev_idx, NUM_DEVICES);
         cudaMemcpy(d_i_arr[dev_idx], i_t.data(), input_size * sizeof(T), cudaMemcpyHostToDevice);
+        cudaMemset(d_o_arr[dev_idx], 0, output_size * sizeof(T)); // for atomic tests
+
+        if (dev_idx == 0) {
+            kittens::detail::vmm::multicast_create_handle(&d_i_mc_handle, d_i_mc_alloc_size, *d_i_alloc_size, NUM_DEVICES);
+            kittens::detail::vmm::multicast_create_handle(&d_o_mc_handle, d_o_mc_alloc_size, *d_o_alloc_size, NUM_DEVICES);        
+        }
+        kittens::detail::vmm::multicast_check(dev_idx);
+        kittens::detail::vmm::multicast_bind_device(d_i_mc_handle, dev_idx);
+        kittens::detail::vmm::multicast_bind_device(d_o_mc_handle, dev_idx);
         CudaCheckError();
     }
+
+    // Binding memory to MC should be done after all device binding
+    for (int dev_idx = 0; dev_idx < NUM_DEVICES; dev_idx++) {
+        kittens::detail::vmm::multicast_bind_address(d_i_mc_handle, d_i_arr[dev_idx], *d_i_alloc_size);
+        kittens::detail::vmm::multicast_bind_address(d_o_mc_handle, d_o_arr[dev_idx], *d_o_alloc_size);
+    }
+    kittens::detail::vmm::vm_map((void **)d_i_mc, d_i_mc_handle, *d_i_mc_alloc_size);
+    kittens::detail::vmm::vm_map((void **)d_o_mc, d_o_mc_handle, *d_o_mc_alloc_size);
+    kittens::detail::vmm::vm_set_access((void *)*d_i_mc, *d_i_mc_alloc_size, NUM_DEVICES);
+    kittens::detail::vmm::vm_set_access((void *)*d_o_mc, *d_o_mc_alloc_size, NUM_DEVICES);
+    kittens::detail::vmm::vm_free(d_i_mc_handle);
+    kittens::detail::vmm::vm_free(d_o_mc_handle);
 }
 
 extern int should_write_outputs;
@@ -315,7 +351,19 @@ test_result validate(T *d_i, T *d_o, const std::vector<float> &i_ref, std::vecto
 
 // Validation for multi-gpu tests
 template<int NUM_DEVICES, kittens::ducks::pgl::all PGL, typename T>
-test_result validate(PGL &input, PGL &output, const std::vector<std::vector<float>> &i_ref, std::vector<std::vector<float>> &o_ref, std::string test_name, int cols=16, float eps=1e-1) { // default eps even higher due to multiple GPUs parallelizing
+test_result validate(
+    PGL &input,
+    PGL &output,
+    size_t d_i_alloc_size,
+    size_t d_o_alloc_size,
+    size_t d_i_mc_alloc_size,
+    size_t d_o_mc_alloc_size,
+    const std::vector<std::vector<float>> &i_ref,
+    std::vector<std::vector<float>> &o_ref,
+    std::string test_name,
+    int cols=16,
+    float eps=1e-1
+) { // default eps even higher due to multiple GPUs parallelizing
     const int input_size  = i_ref[0].size();
     const int output_size = o_ref[0].size();
 
@@ -326,10 +374,14 @@ test_result validate(PGL &input, PGL &output, const std::vector<std::vector<floa
     std::cout << "test `" << test_name << "`";
     bool good = true;
 
+    // Wait for all devices to complete
     for (int dev_idx = 0; dev_idx < NUM_DEVICES; ++dev_idx) {
         cudaSetDevice(dev_idx);
         cudaDeviceSynchronize();
         CudaCheckError();
+    }
+
+    for (int dev_idx = 0; dev_idx < NUM_DEVICES; ++dev_idx) {
         cudaMemcpy(&o_t[dev_idx * output_size], output[dev_idx].raw_ptr, output_size * sizeof(T), cudaMemcpyDeviceToHost);
         CudaCheckError();
 
@@ -404,11 +456,25 @@ test_result validate(PGL &input, PGL &output, const std::vector<std::vector<floa
         outfile.close();
     }
 
+    // Destroy multicast object
+    kittens::detail::vmm::handle d_in_mc_handle;
+    kittens::detail::vmm::handle d_out_mc_handle;
+    kittens::detail::vmm::vm_retrieve_handle(&d_in_mc_handle, input.mc_ptr);
+    kittens::detail::vmm::vm_retrieve_handle(&d_out_mc_handle, output.mc_ptr);        
+    kittens::detail::vmm::vm_unmap(input.mc_ptr, d_i_mc_alloc_size);
+    kittens::detail::vmm::vm_unmap(output.mc_ptr, d_o_mc_alloc_size);
     for (int dev_idx = 0; dev_idx < NUM_DEVICES; ++dev_idx) {
-        cudaSetDevice(dev_idx);
-        kittens::pglCudaFree(dev_idx, input[dev_idx].raw_ptr, input_size * sizeof(T));
-        kittens::pglCudaFree(dev_idx, output[dev_idx].raw_ptr, output_size * sizeof(T));
+        kittens::detail::vmm::multicast_unbind_device(d_in_mc_handle, d_i_mc_alloc_size, dev_idx);
+        kittens::detail::vmm::multicast_unbind_device(d_out_mc_handle, d_o_mc_alloc_size, dev_idx);
     }
+    kittens::detail::vmm::vm_free(d_in_mc_handle);
+    kittens::detail::vmm::vm_free(d_out_mc_handle);
+
+    for (int dev_idx = 0; dev_idx < NUM_DEVICES; ++dev_idx) {
+        kittens::detail::vmm::vm_unmap(input[dev_idx].raw_ptr, d_i_alloc_size);
+        kittens::detail::vmm::vm_unmap(output[dev_idx].raw_ptr, d_o_alloc_size);
+    }
+
     delete[] o_t, o;
     CudaCheckError();
     return good ? test_result::PASSED : test_result::FAILED;

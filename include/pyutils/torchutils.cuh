@@ -4,7 +4,7 @@
 #include <ATen/core/Tensor.h>
 
 #include "kittens.cuh"
-#include "pyutils/broker.cuh"
+#include "parallel_tensor.cuh"
 
 namespace kittens {
 namespace py {
@@ -54,6 +54,18 @@ static inline void tensor_check(const at::Tensor &t) {
     }
 }
 
+template <kittens::ducks::pgl::all PGL>
+static inline void parallel_tensor_check(const TKParallelTensor& t) {
+    tensor_check<PGL>(t.data_);
+    TORCH_CHECK(t.data_.sizes().vec() == t.shape_, "Shape mismatch between TKParallelTensor and the underlying tensor");
+    TORCH_CHECK(t.data_.dtype() == t.dtype_, "Dtype mismatch between TKParallelTensor and the underlying tensor");
+    TORCH_CHECK(t.raw_ptrs_.size() == PGL::num_devices, "Number of devices mismatch between PGL and TKParallelTensor");
+    TORCH_CHECK(t.local_rank_ == t.data_.device().index(), "Current tensor device index mismatch within TKParallelTensor");
+    TORCH_CHECK(t.local_world_size_ == PGL::num_devices, "Number of devices mismatch between PGL and TKParallelTensor");
+    TORCH_CHECK(t.multicast_ == PGL::multicast, "Multicast mismatch between PGL and TKParallelTensor");
+    TORCH_CHECK(t.raw_ptrs_[t.local_rank_] == reinterpret_cast<void *>(t.data_.data_ptr()), "Current tensor data pointer not found in TKParallelTensor's raw_ptrs_");
+}
+
 template <kittens::ducks::gl::all GL>
 static inline GL tensor_to_gl(const at::Tensor &t) {
     tensor_check<GL>(t);
@@ -68,57 +80,20 @@ static inline GL tensor_to_gl(const at::Tensor &t) {
 }
 
 template <kittens::ducks::pgl::all PGL>
-static inline PGL tensor_to_pgl(const at::Tensor &t, KittensBroker &broker) {
-    TORCH_CHECK(PGL::num_devices == broker.local_world_size_, "Number of devices mismatch between PGL and KittensBroker");
-    TORCH_CHECK(!PGL::_INIT_MC, "PGL must be initialized with INIT_MC=false for multiprocess use");
-    TORCH_CHECK(broker.local_rank_ == t.device().index(), "Current tensor device index mismatch with KittensBroker");
-
-    tensor_check<PGL>(t);
+static inline PGL parallel_tensor_to_pgl(TKParallelTensor &t) {
+    parallel_tensor_check<PGL>(t);
 
     std::array<int, 4> shape = {1, 1, 1, 1};
-    for (int i = 0; i < static_cast<int>(t.dim()); ++i)
-        shape[4 - t.dim() + i] = static_cast<int>(t.size(i));
-
-    KittensIPCPointerSet ptrs = broker.gather_ipc_ptrs(t);
-
-    int device_ids[PGL::num_devices];
-    uint64_t data_ptrs[PGL::num_devices];
-    for (int i = 0; i < PGL::num_devices; i++) {
-        device_ids[i] = i;
-        data_ptrs[i] = reinterpret_cast<uint64_t>(ptrs.raw_ptrs_[i]);
+    for (int i = 0; i < static_cast<int>(t.data_.dim()); ++i) {
+        shape[4 - t.data_.dim() + i] = static_cast<int>(t.data_.size(i));
     }
 
-    TORCH_CHECK(data_ptrs[broker.local_rank_] == reinterpret_cast<uint64_t>(t.data_ptr()), 
-                "Current tensor data pointer not found in KittensIPCPointerSet"); // sanity check
-
-    return ::kittens::make_pgl<PGL>(device_ids, data_ptrs, shape[0], shape[1], shape[2], shape[3]);
-}
-
-template <kittens::ducks::pgl::all PGL>
-static inline PGL tensor_to_pgl(const at::Tensor &t, const KittensIPCPointerSet &ptrs, const KittensBroker &broker) {
-    TORCH_CHECK(PGL::num_devices == broker.local_world_size_, "Number of devices mismatch between PGL and KittensBroker");
-    TORCH_CHECK(PGL::num_devices == ptrs.is_imported_.size(), "Number of devices mismatch between PGL and KittensIPCPointerSet");
-    TORCH_CHECK(PGL::num_devices == ptrs.raw_ptrs_.size(), "Number of devices mismatch between PGL and KittensIPCPointerSet");
-    TORCH_CHECK(!PGL::_INIT_MC, "PGL must be initialized with INIT_MC=false for multiprocess use");
-    TORCH_CHECK(broker.local_rank_ == t.device().index(), "Current tensor device index mismatch with KittensBroker");
-
-    tensor_check<PGL>(t);
-
-    std::array<int, 4> shape = {1, 1, 1, 1};
-    for (int i = 0; i < static_cast<int>(t.dim()); ++i)
-        shape[4 - t.dim() + i] = static_cast<int>(t.size(i));
-
-    int device_ids[PGL::num_devices];
-    uint64_t data_ptrs[PGL::num_devices];
-    for (int i = 0; i < PGL::num_devices; i++) {
-        device_ids[i] = i;
-        data_ptrs[i] = reinterpret_cast<uint64_t>(ptrs.raw_ptrs_[i]);
-    }
-
-    TORCH_CHECK(data_ptrs[broker.local_rank_] == reinterpret_cast<uint64_t>(t.data_ptr()), 
-                "Current tensor data pointer not found in KittensIPCPointerSet"); // sanity check
-
-    return ::kittens::make_pgl<PGL>(device_ids, data_ptrs, shape[0], shape[1], shape[2], shape[3]);
+    if constexpr (PGL::multicast)
+        return ::kittens::make_pgl<PGL>(
+            reinterpret_cast<uint64_t>(t.multicast_ptr_), reinterpret_cast<uint64_t *>(t.raw_ptrs_.data()), shape[0], shape[1], shape[2], shape[3]);
+    else
+        return ::kittens::make_pgl<PGL>(
+            reinterpret_cast<uint64_t *>(t.raw_ptrs_.data()), shape[0], shape[1], shape[2], shape[3]);
 }
 
 template <kittens::ducks::gl::all GL>
@@ -133,6 +108,16 @@ static inline void _device_check(const at::Tensor& first, const at::Tensor& seco
 template <typename T1, typename... Ts>
 static inline void device_check(const T1& first, const Ts&... rest) {
     (_device_check(first, rest), ...);
+}
+
+static inline void _parallel_tensor_check(const TKParallelTensor& first, const TKParallelTensor& second) {
+    TORCH_CHECK(first.local_rank_ == second.local_rank_, "All parallel tensors must have the same local_rank");
+    TORCH_CHECK(first.local_world_size_ == second.local_world_size_, "All parallel tensors must have the same local_world_size");
+}
+
+template <typename T1, typename... Ts>
+static inline void parallel_tensor_check(const T1& first, const Ts&... rest) {
+    (_parallel_tensor_check(first, rest), ...);
 }
 
 template <typename Config>

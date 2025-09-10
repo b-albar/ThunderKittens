@@ -1,11 +1,11 @@
 # PGL is only supported on Hopper and Blackwell
-GPU := H100
+GPU := B200
 
 # Compiler
 NVCC := nvcc
 
 # NVCC flags
-THUNDERKITTENS_ROOT := ../../
+THUNDERKITTENS_ROOT := ../../../
 NVCCFLAGS := -DNDEBUG -Xcompiler=-fPIE -Xcompiler -fopenmp --expt-extended-lambda --expt-relaxed-constexpr 
 NVCCFLAGS += -Xcompiler=-Wno-psabi -Xcompiler=-fno-strict-aliasing --use_fast_math -forward-unknown-to-host-compiler 
 NVCCFLAGS += -O3  -Xnvlink=--verbose -Xptxas=--verbose -Xptxas=--warn-on-spills -std=c++20 -MD -MT -MF -x cu -lrt 
@@ -20,8 +20,8 @@ else ifeq ($(GPU), B200)
 endif
 
 # Target
-SRC := all_reduce.cu
-TARGET := all_reduce
+SRC := all_reduce_simple.cu
+TARGET := all_reduce_simple
 
 all: $(TARGET)
 
