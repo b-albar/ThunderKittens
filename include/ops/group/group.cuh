@@ -46,10 +46,9 @@ __device__ static inline void arrive(int id) {
 #include "memory/memory.cuh"
 #include "shared/shared.cuh"
 #include "register/register.cuh"
-
-#ifdef KITTENS_HOPPER
 #include "mma/mma.cuh"
 
+#ifdef KITTENS_HOPPER
 template<int n_reg> __device__ static inline void increase_registers() {
     static_assert(n_reg % 8 == 0, "n_reg must be a multiple of 8");
     asm volatile("setmaxnreg.inc.sync.aligned.u32 %0;\n" :: "n"(n_reg));
