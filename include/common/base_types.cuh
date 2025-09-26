@@ -1,19 +1,16 @@
 /**
  * @file
  * @brief Declarations, manipulations, and wrappers for basic types.
- * 
+ *
  * This file is a bunch of utilities for going back and forth between different types.
- * 
+ *
  * Many of them are for the compiler, so as to clean up the code. It unfortunately
  * seems necessary when we have types we really care about that are less than word width.
  */
 
 #pragma once
 
-#ifdef KITTENS_HOPPER
 #include <cuda_fp8.h>
-#endif
-
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <string>
@@ -38,7 +35,7 @@ using bf16_2 = __nv_bfloat162;
  * @brief Packed word of two half-precision floating-point values.
  */
 using half_2 = __half2;
-#ifdef KITTENS_HOPPER
+
 /**
  * @brief float8 floating-point type.
  */
@@ -57,7 +54,6 @@ using fp8e8m0_2 = __nv_fp8x2_e8m0;
 using fp8e4m3_4 = __nv_fp8x4_e4m3;
 using fp8e5m2_4 = __nv_fp8x4_e5m2;
 using fp8e8m0_4 = __nv_fp8x4_e8m0;
-#endif
 
 namespace ducks {
 /**
@@ -67,17 +63,10 @@ namespace ducks {
  */
 namespace base_types {
 
-#ifdef KITTENS_HOPPER
 template<typename T>
 concept T2 = std::is_same_v<T, float2> || std::is_same_v<T, bf16_2> || std::is_same_v<T, half_2> || std::is_same_v<T, fp8e4m3_4> || std::is_same_v<T, fp8e5m2_4> || std::is_same_v<T, fp8e8m0_4>; // could add half_2 later if implemented.
 template<typename T>
 concept T1 = std::is_same_v<T, float>  || std::is_same_v<T, bf16  > || std::is_same_v<T, half> || std::is_same_v<T, fp8e4m3> || std::is_same_v<T, fp8e5m2> || std::is_same_v<T, fp8e8m0>; // could add half_2 later if implemented.
-#else
-template<typename T>
-concept T2 = std::is_same_v<T, float2> || std::is_same_v<T, bf16_2> || std::is_same_v<T, half_2>;
-template<typename T>
-concept T1 = std::is_same_v<T, float>  || std::is_same_v<T, bf16  > || std::is_same_v<T, half>;
-#endif
 
 } // namespace base_types
 } // namespace ducks
@@ -408,7 +397,7 @@ template<> struct convertor<half_2, bf16_2> {
 // fp8e4m3
 template<> struct convertor<fp8e4m3_4, float4> {
     static __host__ __device__ inline fp8e4m3_4 convert(const float4& u) {
-        return __nv_fp8x4_e4m3(u); 
+        return __nv_fp8x4_e4m3(u);
     }
 };
 template<> struct convertor<float4, fp8e4m3_4> {
@@ -419,7 +408,7 @@ template<> struct convertor<float4, fp8e4m3_4> {
 };
 template<> struct convertor<fp8e4m3_2, float2> {
     static __host__ __device__ inline fp8e4m3_2 convert(const float2& u) {
-        return __nv_fp8x2_e4m3(u); 
+        return __nv_fp8x2_e4m3(u);
     }
 };
 template<> struct convertor<float2, fp8e4m3_2> {
@@ -455,7 +444,7 @@ template<> struct convertor<fp8e4m3_4, bf16_2> {
 // fp8e5m2
 template<> struct convertor<fp8e5m2_4, float4> {
     static __host__ __device__ inline fp8e5m2_4 convert(const float4& u) {
-        return __nv_fp8x4_e5m2(u); 
+        return __nv_fp8x4_e5m2(u);
     }
 };
 template<> struct convertor<float4, fp8e5m2_4> {
@@ -466,7 +455,7 @@ template<> struct convertor<float4, fp8e5m2_4> {
 };
 template<> struct convertor<fp8e5m2_2, float2> {
     static __host__ __device__ inline fp8e5m2_2 convert(const float2& u) {
-        return __nv_fp8x2_e5m2(u); 
+        return __nv_fp8x2_e5m2(u);
     }
 };
 template<> struct convertor<float2, fp8e5m2_2> {
