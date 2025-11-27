@@ -90,14 +90,6 @@ __device__ static __forceinline__ int laneid() {
     return threadIdx.x & 31;
 }
 
-#if defined(KITTENS_HOPPER)
-constexpr int MAX_SHARED_MEMORY = 227000;
-#elif defined(KITTENS_A100)
-constexpr int MAX_SHARED_MEMORY = 164000;
-#elif defined(KITTENS_4090)
-constexpr int MAX_SHARED_MEMORY = 100000;
-#endif
-
 struct transpose {
     static constexpr int N = 0; // not transposed
     static constexpr int T = 1; // transposed
@@ -113,7 +105,7 @@ struct axis {
  * @namespace ducks
  *
  * @brief ThunderKittens' namespace for template metaprogramming..
- * 
+ *
  * This includes primarily dummy types and concept wrappers, along
  * with a few additional utilities.
  */
@@ -204,7 +196,7 @@ __device__ inline float2 packed_shfl_sync<float2>(uint32_t mask, const float2 &f
 #define KITTENS_ALIGN_AS(n) alignas(n)
 #endif
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 #define KITTENS_DEFAULT_ALIGN KITTENS_ALIGN_AS(128)
 #else
 #define KITTENS_DEFAULT_ALIGN KITTENS_ALIGN_AS(16)
@@ -218,10 +210,10 @@ struct KITTENS_DEFAULT_ALIGN alignment_dummy { int dummy; };
  * @brief Very simple allocator for dynamic shared memory. Advances pointer and tracks alignments.
  * @tparam default_alignment The default alignment this allocator will enforce. If <=0 (default -1) it will not align.
  */
-#ifdef KITTENS_HOPPER
-template<int default_alignment=1024> 
+#if KITTENS_ARCH == 900
+template<int default_alignment=1024>
 #else
-template<int default_alignment=16> 
+template<int default_alignment=16>
 #endif
 struct shared_allocator {
     int *ptr;
@@ -238,7 +230,7 @@ struct shared_allocator {
         struct variadic_array<A> {
             using type = A;
         };
-        template<typename A, size_t... dims> 
+        template<typename A, size_t... dims>
         using variadic_array_t = typename variadic_array<A, dims...>::type;
 
         template<int alignment>
@@ -263,7 +255,7 @@ struct shared_allocator {
         * @tparam dims... A list of dimensions for the N-dimensional array.
         * @return Reference to the allocated object.
         */
-        template<typename A, size_t... dims> 
+        template<typename A, size_t... dims>
         __device__ inline variadic_array_t<A, dims...>& allocate() {
             // static_assert(sizeof(A) % default_alignment == 0, "Type is not aligned properly for array allocation");
             align_ptr<default_alignment>();
@@ -279,7 +271,7 @@ struct shared_allocator {
         * @tparam dims... A list of dimensions for the N-dimensional array.
         * @return Reference to the allocated object.
         */
-        template<int alignment, typename A, size_t... dims> 
+        template<int alignment, typename A, size_t... dims>
         __device__ inline variadic_array_t<A, dims...>& allocate() {
             // static_assert(sizeof(A) % alignment == 0, "Type is not aligned properly for array allocation");
             align_ptr<alignment>();
@@ -289,7 +281,7 @@ struct shared_allocator {
             return *p;
         }
 };
-#if (defined(KITTENS_HOPPER) || defined(KITTENS_BLACKWELL))
+#if KITTENS_ARCH >= 900
 /**
  * @brief A wrapper for an allocator that enforces sufficient alignment to be used for TMA loads and stores.
  */

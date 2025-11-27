@@ -161,9 +161,9 @@ template<int axis, cache_policy policy, ducks::st::all ST, ducks::gl::all GL, du
 __device__ static inline void store_add_async(const GL &dst, const ST &src, const COORD &idx) {
 
     static_assert(!(std::is_same_v<typename ST::dtype, fp8e4m3> ||
-                    std::is_same_v<typename ST::dtype, fp8e5m2>), 
+                    std::is_same_v<typename ST::dtype, fp8e5m2>),
                     "TMA does not support async add reductions for fp8 types.");
-                    
+
     uint64_t tma_ptr = reinterpret_cast<uint64_t>(dst.template get_tma<ST, axis>());
     uint32_t src_ptr  = static_cast<uint32_t>(__cvta_generic_to_shared(&src));
     coord<ducks::default_type> unit_coord = idx.template unit_coord<axis, 3>(); // convert to unit coordinates
@@ -200,7 +200,7 @@ template<int axis, cache_policy policy, ducks::st::all ST, ducks::pgl::all PGL, 
 __device__ static inline void store_add_async(const PGL &dst, const ST &src, const COORD &idx) {
 
     static_assert(!(std::is_same_v<typename ST::dtype, fp8e4m3> ||
-                    std::is_same_v<typename ST::dtype, fp8e5m2>), 
+                    std::is_same_v<typename ST::dtype, fp8e5m2>),
                     "TMA does not support async add reductions for fp8 types.");
 
     uint64_t tma_ptr = reinterpret_cast<uint64_t>(dst.template get_tma<ST, axis>());
@@ -252,7 +252,7 @@ __device__ static inline void store_min_async(const GL &dst, const ST &src, cons
     static_assert(!std::is_same_v<typename ST::dtype, float>, "TMA does not support async min/max reductions for fp32 types.");
 
     static_assert(!(std::is_same_v<typename ST::dtype, fp8e4m3> ||
-                    std::is_same_v<typename ST::dtype, fp8e5m2>), 
+                    std::is_same_v<typename ST::dtype, fp8e5m2>),
                     "TMA does not support async add reductions for fp8 types.");
 
     uint64_t tma_ptr = reinterpret_cast<uint64_t>(dst.template get_tma<ST, axis>());
@@ -292,7 +292,7 @@ __device__ static inline void store_min_async(const PGL &dst, const ST &src, con
     static_assert(!std::is_same_v<typename ST::dtype, float>, "TMA does not support async min/max reductions for fp32 types.");
 
     static_assert(!(std::is_same_v<typename ST::dtype, fp8e4m3> ||
-                    std::is_same_v<typename ST::dtype, fp8e5m2>), 
+                    std::is_same_v<typename ST::dtype, fp8e5m2>),
                     "TMA does not support async add reductions for fp8 types.");
 
     uint64_t tma_ptr = reinterpret_cast<uint64_t>(dst.template get_tma<ST, axis>());
@@ -344,7 +344,7 @@ __device__ static inline void store_max_async(const GL &dst, const ST &src, cons
     static_assert(!std::is_same_v<typename ST::dtype, float>, "TMA does not support async min/max reductions for fp32 types.");
 
     static_assert(!(std::is_same_v<typename ST::dtype, fp8e4m3> ||
-                    std::is_same_v<typename ST::dtype, fp8e5m2>), 
+                    std::is_same_v<typename ST::dtype, fp8e5m2>),
                     "TMA does not support async add reductions for fp8 types.");
 
     uint64_t tma_ptr = reinterpret_cast<uint64_t>(dst.template get_tma<ST, axis>());
@@ -384,7 +384,7 @@ __device__ static inline void store_max_async(const PGL &dst, const ST &src, con
     static_assert(!std::is_same_v<typename ST::dtype, float>, "TMA does not support async min/max reductions for fp32 types.");
 
     static_assert(!(std::is_same_v<typename ST::dtype, fp8e4m3> ||
-                    std::is_same_v<typename ST::dtype, fp8e5m2>), 
+                    std::is_same_v<typename ST::dtype, fp8e5m2>),
                     "TMA does not support async add reductions for fp8 types.");
 
     uint64_t tma_ptr = reinterpret_cast<uint64_t>(dst.template get_tma<ST, axis>());
@@ -481,7 +481,7 @@ namespace cluster {
  * @param[in] tile_col_idx The column coord of the requested tile. This is in units of complete tiles.
  * @param[in] cluster_mask The mask of the clusters to broadcast to.
  */
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
 template<int axis, cache_policy policy, ducks::st::all ST, ducks::gl::all GL, ducks::coord::tile COORD=coord<ST>>
 __device__ static inline void load_async(ST &dst, const GL &src, const COORD &idx, semaphore& bar, uint16_t cluster_mask, int dst_mbar_cta=-1)
 #else
@@ -495,7 +495,7 @@ __device__ static inline void load_async(ST &dst, const GL &src, const COORD &id
     coord<ducks::default_type> unit_coord = idx.template unit_coord<axis, 3>(); // convert to unit coordinates
     int4 tma_coords = detail::tma_coords<ST, axis>(unit_coord);
 
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     if(dst_mbar_cta != -1) {
         uint32_t neighbor_mbar_ptr;
         asm volatile (
@@ -546,7 +546,7 @@ __device__ static inline void load_async(ST &dst, const GL &src, const COORD &id
         );
     }
 }
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
 template<ducks::st::all ST, ducks::gl::all GL, ducks::coord::tile COORD=coord<ST>>
 __device__ static inline void load_async(ST &dst, const GL &src, const COORD &idx, semaphore& bar, uint16_t cluster_mask, int dst_mbar_cta=-1) {
     load_async<dim::ROW, cache_policy::NORMAL, ST, GL, COORD>(dst, src, idx, bar, cluster_mask, dst_mbar_cta);

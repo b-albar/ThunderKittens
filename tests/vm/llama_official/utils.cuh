@@ -37,7 +37,7 @@ rms_norm(const sv_t &rms_scale_smem, const sv_t &activations_smem,
   return activations_vec;
 }
 
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
 template <kittens::ducks::st::all st_t>
 __device__ static inline void matvec(sv_fl<st_t::rows> &out_smem,
                                      st_t &weights_smem,

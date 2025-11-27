@@ -19,13 +19,13 @@ namespace kittens {
 namespace ducks {
 /**
  * @namespace rt
- * 
+ *
  * @brief The namespace where concepts and abstract types for register vectors live.
  */
 namespace rv {
 /**
  * @brief A dummy type used to identify register vectors.
- * 
+ *
  * For a type to quack like an rv, it should define its identifier as ducks::rv::identifier.
  * If a type quacks like ducks::rv::identifier, it will be treated as an rv by compiler checks.
  */
@@ -76,7 +76,7 @@ struct rv {
     static constexpr int tiles  = _length / kittens::TILE_ROW_DIM<T>; ///< Length in subtiles, aliased for consistency with sv type
     static constexpr int inner_dim = layout::inner_dim; ///< Internal layout within a subtile. Either 1 or 2.
     static constexpr int outer_dim = is_naive ? (tiles+1)/2 : tiles; ///< Outer dim (also length in tiles)
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T2, fp8e4m3_4> && !std::is_same_v<T2, fp8e5m2_4>, "Unsupported type for fp8");
     #endif
 

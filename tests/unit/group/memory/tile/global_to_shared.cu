@@ -50,7 +50,7 @@ struct g2s_sweep_gmem_type_2d {
         g2s_sweep_size_2d<test<float>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         g2s_sweep_size_2d<test<kittens::bf16>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         g2s_sweep_size_2d<test<kittens::half>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
         g2s_sweep_size_2d<test<kittens::fp8e4m3>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         g2s_sweep_size_2d<test<kittens::fp8e5m2>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
 #endif
@@ -62,13 +62,13 @@ struct group_shared_load_store {
     using dtype = T;
     template<int H, int W, int NW, typename axis> using valid = std::bool_constant<
         (H%NW==0 && W*H<=64)
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
         && ( (!std::is_same_v<T, kittens::fp8e4m3> && !std::is_same_v<T, kittens::fp8e5m2>) || W%2 == 0 )
-#endif 
+#endif
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "group_shared_loadstore_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "group_shared_loadstore_gmem=half" :
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
                                                         std::is_same_v<T, kittens::fp8e4m3> ? "group_shared_loadstore_gmem=fp8e4m3" :
                                                         std::is_same_v<T, kittens::fp8e5m2> ? "group_shared_loadstore_gmem=fp8e5m2" :
 #endif
@@ -102,7 +102,7 @@ struct group_shared_load_store_async {
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "group_shared_loadstore_async_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "group_shared_loadstore_async_gmem=half" :
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
                                                       std::is_same_v<T, kittens::fp8e4m3> ? "group_shared_loadstore_async_gmem=fp8e4m3" :
                                                         std::is_same_v<T, kittens::fp8e5m2> ? "group_shared_loadstore_async_gmem=fp8e5m2" :
 #endif
@@ -136,7 +136,7 @@ using I2_t = std::integral_constant<int, 2>;
 void group::memory::tile::global_to_shared::tests(test_data &results) {
     std::cout << " ----- Starting ops/group/memory/tile/global_to_shared tests! -----\n" << std::endl;
     constexpr int SIZE = INTENSITY_1 ? 2  :
-                         INTENSITY_2 ? 4  : 
+                         INTENSITY_2 ? 4  :
                          INTENSITY_3 ? 8  :
                          INTENSITY_4 ? 16 : -1;
 

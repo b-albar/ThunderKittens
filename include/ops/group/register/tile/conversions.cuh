@@ -38,7 +38,7 @@ template<typename T, ducks::rt_layout::all layout>
 __device__ static inline void swap_layout(rt_base<T, typename ducks::rt_layout::transpose<layout>::type> &dst, const rt_base<T, layout> &src) {
     swap_layout_8(dst.data[0], src.data[0]);
     // technically this swap can be eliminated if we simply reinterpret the layout of the registers
-    // everywhere else in the code, but that feels... very likely to cause bugs and not worth it. 
+    // everywhere else in the code, but that feels... very likely to cause bugs and not worth it.
     typename rt_base<T, layout>::T2 data1_cache = src.data[1]; // important for swap!
     swap_layout_8(dst.data[1], src.data[2]);
     swap_layout_8(dst.data[2], data1_cache);
@@ -124,7 +124,7 @@ template<typename T, ducks::rt_layout::all layout>
 __device__ static inline void transpose(rt_base<T, layout> &dst, const rt_base<T, layout> &src) {
     swap_layout_8(dst.data[0], src.data[0]);
     // technically this swap can be eliminated if we simply reinterpret the layout of the registers
-    // everywhere else in the code, but that feels... very likely to cause bugs and not worth it. 
+    // everywhere else in the code, but that feels... very likely to cause bugs and not worth it.
     typename rt_base<T, layout>::T2 data1_cache = src.data[1]; // important for swap!
     swap_layout_8(dst.data[1], src.data[2]);
     swap_layout_8(dst.data[2], data1_cache);
@@ -132,7 +132,7 @@ __device__ static inline void transpose(rt_base<T, layout> &dst, const rt_base<T
 }
 /**
  * @brief Transposes a register tile.
- * 
+ *
  * This function is marked "sep", which means that the registers underlying dst MUST be separate
  * from the registers underlying src.
  *
@@ -214,7 +214,7 @@ __device__ static inline void copy(rt_base<T, layout> &dst, const rt_base<U, lay
         dst.data[k] = base_types::convertor<T2, U2>::convert(src.data[k]);
     }
 }
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
  * @brief Copies a register tile, converting the underlying type if necessary.
  *
@@ -246,17 +246,17 @@ __device__ static inline void copy(rt<T2, _height, _width, layout> &dst, const r
             for(int j = 0; j < dst.width; j++) {
                 #pragma unroll
                 for(int k = 0; k < dst.tiles[0][0].packed_per_thread; k++) {
-                    
+
                     // check for half, float, bf16
                     using src_t = std::conditional_t<std::is_same_v<U2, float>, float2, std::conditional_t<std::is_same_v<U2, kittens::bf16>, bf16_2, half2>>;
                     src_t val1, val2;
 
                     // Put something up for adoption
-                    if (laneid % 2 == 0) { 
+                    if (laneid % 2 == 0) {
                         // put up src left core matrix first as 0, 2
                         val1 = src.tiles[i][2*j + k/2].data[(k%2)+0];
                         val2 = src.tiles[i][2*j + k/2].data[(k%2)+2];
-                    } else { 
+                    } else {
                         // put up src right core matrix first as 1, 3
                         val1 = src.tiles[i][2*j + k/2].data[(k%2)+2];
                         val2 = src.tiles[i][2*j + k/2].data[(k%2)+0];
@@ -270,12 +270,12 @@ __device__ static inline void copy(rt<T2, _height, _width, layout> &dst, const r
 
                     int src_offset2 = (laneid % 4 < 2 ) ? src_offset + 1 : (src_offset - 1);
                     src_t val23 = packed_shfl_sync(MASK_ALL, val2, src_offset2);  // Get from odd thread
-                    
+
                     // Convert to fp8e4m3_4
                     float4 f4;
                     using fp8_4_t = std::conditional_t<std::is_same_v<T2, fp8e4m3>, fp8e4m3_4, fp8e5m2_4>;
                     fp8_4_t f4_fp8;
-                    if ( laneid % 4 < 2 ) { 
+                    if ( laneid % 4 < 2 ) {
                         f4.x = val01.x;  // Thread 2N's first value
                         f4.y = val01.y;  // Thread 2N's second value
                         f4.z = val23.x;  // Thread 2N+1's first value
@@ -336,7 +336,7 @@ __device__ static inline void copy(rt<T2, _height, _width, layout> &dst, const r
                     if constexpr (!(std::is_same_v<T2, float>)) {
                         dst_t f2_0_shfl_t = base_types::convertor<dst_t, float2>::convert(f2_0_shfl);
                         dst_t f2_1_shfl_t = base_types::convertor<dst_t, float2>::convert(f2_1_shfl);
-                        if (laneid % 2 == 0) {  
+                        if (laneid % 2 == 0) {
                             dst.tiles[i][dst_j].data[(k%2)+0] = f2_0_shfl_t;
                             dst.tiles[i][dst_j].data[(k%2)+2] = f2_1_shfl_t;
                         } else {
@@ -344,7 +344,7 @@ __device__ static inline void copy(rt<T2, _height, _width, layout> &dst, const r
                             dst.tiles[i][dst_j].data[(k%2)+2] = f2_0_shfl_t;
                         }
                     } else {
-                        if (laneid % 2 == 0) {  
+                        if (laneid % 2 == 0) {
                             dst.tiles[i][dst_j].data[(k%2)+0] = f2_0_shfl;
                             dst.tiles[i][dst_j].data[(k%2)+2] = f2_1_shfl;
                         } else {
@@ -390,6 +390,77 @@ __device__ static inline void copy(rt<T2, _height, _width, layout> &dst, const r
     }
 }
 #endif
+
+/* ----------  CAUSAL  ---------- */
+
+/**
+ * @brief Makes a square register tile causal by zeroing elements above the main diagonal.
+ *
+ * This function modifies a square register tile in-place to make it causal. All elements
+ * above the main diagonal are set to zero, while elements on or below the main diagonal
+ * are left unchanged.
+ *
+ * @tparam T The data type of the register tile elements.
+ * @tparam _size The size (height and width) of the square register tile.
+ * @tparam layout The current layout of the register tile.
+ * @param tile[in,out] Reference to the register tile to be made causal.
+ */
+template<ducks::rt::row_layout RT>
+__device__ static inline void make_causal(RT &dst, const RT &src, typename RT::T cst) {
+    KITTENS_CHECK_WARP
+    using T = typename RT::T;  // scalar type (e.g., float)
+    using T2 = typename RT::dtype;  // packed type (e.g., float2)
+
+    // Create packed constant for bulk assignments
+    T2 cst_packed;
+    if constexpr (std::is_same_v<T, float>) {
+        cst_packed = make_float2(cst, cst);
+    } else if constexpr (std::is_same_v<T, __half>) {
+        cst_packed = make_half2(cst, cst);
+    } else if constexpr (std::is_same_v<T, bf16>) {
+        cst_packed = bf16_2{cst, cst};
+    }
+
+    #pragma unroll
+    for(int i = 0; i < dst.height; i++) {
+        #pragma unroll
+        for(int j = 0; j < dst.width; j++) {
+            if(j < i) { // below the diagonal, copy
+                #pragma unroll
+                for(int k = 0; k < dst.packed_per_tile; k++) {
+                    dst.tiles[i][j].data[k] = src.tiles[i][j].data[k];
+                }
+            }
+            else if(j > i) { // above the diagonal, zero
+                #pragma unroll
+                for(int k = 0; k < dst.packed_per_tile; k++) {
+                    dst.tiles[i][j].data[k] = cst_packed;
+                }
+            }
+            else { // on the diagonal, interesting!
+                constexpr uint32_t MASK_X = 0xFF773311, MASK_Y = 0xF7733110; // magic numbers for on-diagonal core matrices
+                dst.tiles[i][j].data[1] = src.tiles[i][j].data[1]; // below diagonal, copy
+                dst.tiles[i][j].data[2] = cst_packed; // above diagonal, use constant
+                if((MASK_X >> laneid()) & 1) {
+                    dst.tiles[i][j].data[0].x = src.tiles[i][j].data[0].x;
+                    dst.tiles[i][j].data[3].x = src.tiles[i][j].data[3].x;
+                }
+                else {
+                    dst.tiles[i][j].data[0].x = cst;
+                    dst.tiles[i][j].data[3].x = cst;
+                }
+                if((MASK_Y >> laneid()) & 1) {
+                    dst.tiles[i][j].data[0].y = src.tiles[i][j].data[0].y;
+                    dst.tiles[i][j].data[3].y = src.tiles[i][j].data[3].y;
+                }
+                else {
+                    dst.tiles[i][j].data[0].y = cst;
+                    dst.tiles[i][j].data[3].y = cst;
+                }
+            }
+        }
+    }
+}
 
 /* ----------  SUBTILE  ---------- */
 

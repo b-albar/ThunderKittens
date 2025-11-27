@@ -79,7 +79,7 @@ namespace kittens::prototype::vm {
         struct launcher {
             static __device__ void run(const Globals &g, state<Config> &s) {
                 if (laneid() == 0) {
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
                     s.wait_tensor_ready();
                     arrive(s.tensor_finished, Config::NUM_CONSUMER_WARPS);
 #endif

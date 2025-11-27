@@ -2,14 +2,14 @@
  * @file
  * @brief Templated layouts for complex global memory.
  */
- 
+
 #pragma once
 
 #include "../../common/common.cuh"
 #include "../shared/cst.cuh"
 #include "gl.cuh"
 #include "util.cuh"
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 #include "tma.cuh"
 #endif
 

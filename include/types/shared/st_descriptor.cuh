@@ -5,7 +5,7 @@
 
 #pragma once
 
-#if defined(KITTENS_HOPPER) || defined(KITTENS_BLACKWELL)
+#if KITTENS_ARCH >= 900
 
 #include "../../common/common.cuh"
 #include "st.cuh"
@@ -32,7 +32,7 @@ struct st_descriptor {
     using T = ST::T;
     uint64_t base_desc;
     __device__ inline st_descriptor(const ST &tile) {
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         base_desc = detail::matrix_descriptor_encode((uint64_t)(&tile.data[0])) | (1llu<<46); // needed for blackwell shared memory descriptors.
 #else
         base_desc = detail::matrix_descriptor_encode((uint64_t)(&tile.data[0]));

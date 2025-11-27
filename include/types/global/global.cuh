@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 #include "tma.cuh"
 #endif
 #include "util.cuh"

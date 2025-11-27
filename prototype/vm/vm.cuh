@@ -28,14 +28,14 @@ __device__ inline void kvm_internal(const globals &g) {
     __shared__ kittens::semaphore page_finished[config::NUM_PAGES][config::INSTRUCTION_PIPELINE_STAGES_BITS],
         instruction_arrived[config::INSTRUCTION_PIPELINE_STAGES],
         instruction_finished[config::INSTRUCTION_PIPELINE_STAGES],
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         tensor_finished,
 #endif
         semaphores_ready;
     extern __shared__ int __shm[];
     void *aligned_shm_addr = (void *)((1023 + (uint64_t)&__shm[0]) & ~(uint64_t)1023);
     typename state<config>::page_array_t &pages = *reinterpret_cast<typename state<config>::page_array_t *>(aligned_shm_addr);
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     typename state<config>::tensor_allocator_t tensor_alloc{};
 #endif
 
@@ -53,12 +53,12 @@ __device__ inline void kvm_internal(const globals &g) {
         {/* ... */},
         pages,
         page_finished,
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         tensor_finished,
 #endif
         semaphores_ready,
         start_time
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         ,tensor_alloc
 #endif
         }; // kittens virtual machine state
@@ -89,7 +89,7 @@ __device__ inline void kvm_internal(const globals &g) {
         }
     }
     if (threadIdx.x == 0) {
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         init_semaphore(tensor_finished, config::NUM_CONSUMER_WARPS);
         arrive(tensor_finished, config::NUM_CONSUMER_WARPS); // Flip to state 0, to mark that it starts as available.
 #endif

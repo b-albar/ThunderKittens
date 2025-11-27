@@ -4,7 +4,7 @@
  */
 
 
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
 template<int axis, cache_policy policy, ducks::st::all ST, ducks::gl::all GL, ducks::coord::tile COORD=coord<ST>>
 __device__ static inline void load_async(ST &dst, const GL &src, const COORD &idx, semaphore& bar, uint16_t cluster_mask, int dst_mbar_cta=-1) {
     if(laneid() == 0) {

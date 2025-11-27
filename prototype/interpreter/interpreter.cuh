@@ -20,7 +20,7 @@ template<typename T> concept kernel_template = requires {
     T::common_setup;
     T::producer::setup;
     T::producer::load;
-    T::consumer::setup; 
+    T::consumer::setup;
     T::consumer::compute;
     T::consumer::finish;
 } && kittens_layout<typename T::layout>;
@@ -54,7 +54,7 @@ template<typename Op> __device__ inline void run_op_producer(const typename Op::
             sizeof(scratch_alloc_block)
             <= MAX_BLOCK_SHARED_MEMORY, "Shared memory usage exceeds limits"
         );
-        
+
         shared_allocator alloc(ps.shmem); // allocate shared memory
         input_alloc_block   (&input_smem)  [INPUT_PIPE_STAGES]  = alloc.allocate<input_alloc_block,  INPUT_PIPE_STAGES >();
         output_alloc_block  (&output_smem) [OUTPUT_PIPE_STAGES] = alloc.allocate<output_alloc_block, OUTPUT_PIPE_STAGES>();
@@ -72,7 +72,7 @@ template<typename Op> __device__ inline void run_op_producer(const typename Op::
         using producers = group<NUM_PRODUCER_WARPS>;
         producer_state p_state;
         int num_iters = 0;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.tensor_alloc, ps.instruction};
 #else
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.instruction};
@@ -116,7 +116,7 @@ template<typename Op> __device__ inline void run_op_producer(const typename Op::
             INPUT_PIPE_STAGES*sizeof(input_alloc_block) + sizeof(scratch_alloc_block)
             <= MAX_SHARED_MEMORY-1024, "Shared memory usage exceeds limits"
         );
-        
+
         shared_allocator alloc(ps.shmem); // allocate shared memory
         input_alloc_block   (&input_smem)  [INPUT_PIPE_STAGES]  = alloc.allocate<input_alloc_block,  INPUT_PIPE_STAGES>();
 
@@ -125,7 +125,7 @@ template<typename Op> __device__ inline void run_op_producer(const typename Op::
         // Finish block will come right before the scratch block.
         finish_block  (*finish_smem) = reinterpret_cast<finish_block*>((((uint64_t)(scratch_smem) - sizeof(finish_block))/1024)*1024);
         static_assert(sizeof(scratch_alloc_block) + sizeof(finish_block) <= MAX_BLOCK_SHARED_MEMORY, "Finish block is too large for shared memory.");
-        
+
         int danger_stage = ps.max_finish_offset/sizeof(input_alloc_block);
         ps.max_finish_offset = (uint64_t)(finish_smem) - (uint64_t)(ps.shmem);
         common_state common;
@@ -133,7 +133,7 @@ template<typename Op> __device__ inline void run_op_producer(const typename Op::
         using producers = group<NUM_PRODUCER_WARPS>;
         producer_state p_state;
         int num_iters = -1;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.tensor_alloc, ps.instruction};
 #else
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.instruction};
@@ -188,7 +188,7 @@ template<typename Op> __device__ inline void run_op_consumer(const typename Op::
             sizeof(scratch_alloc_block)
             <= MAX_BLOCK_SHARED_MEMORY, "Shared memory usage exceeds limits"
         );
-        
+
         shared_allocator alloc(ps.shmem); // allocate shared memory
         input_alloc_block   (&input_smem)  [INPUT_PIPE_STAGES]  = alloc.allocate<input_alloc_block,  INPUT_PIPE_STAGES >();
         output_alloc_block  (&output_smem) [OUTPUT_PIPE_STAGES] = alloc.allocate<output_alloc_block, OUTPUT_PIPE_STAGES>();
@@ -204,7 +204,7 @@ template<typename Op> __device__ inline void run_op_consumer(const typename Op::
         using consumers = group<NUM_CONSUMER_WARPS>;
         consumer_state c_state;
         int num_iters = 0;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.tensor_alloc, ps.instruction};
 #else
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.instruction};
@@ -244,7 +244,7 @@ template<typename Op> __device__ inline void run_op_consumer(const typename Op::
             INPUT_PIPE_STAGES*sizeof(input_alloc_block) + sizeof(scratch_alloc_block)
             <= MAX_SHARED_MEMORY-1024, "Shared memory usage exceeds limits"
         );
-        
+
         shared_allocator alloc(ps.shmem); // allocate shared memory
         input_alloc_block   (&input_smem)  [INPUT_PIPE_STAGES]  = alloc.allocate<input_alloc_block,  INPUT_PIPE_STAGES>();
 
@@ -253,13 +253,13 @@ template<typename Op> __device__ inline void run_op_consumer(const typename Op::
         // Finish block will come right before the scratch block.
         finish_block  (*finish_smem) = reinterpret_cast<finish_block*>((((uint64_t)(scratch_smem) - sizeof(finish_block))/1024)*1024);
         static_assert(sizeof(scratch_alloc_block) + sizeof(finish_block) <= MAX_BLOCK_SHARED_MEMORY, "Finish block is too large for shared memory.");
-        
+
         common_state common;
 
         using consumers = group<NUM_CONSUMER_WARPS>;
         consumer_state c_state;
         int num_iters = -1;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.tensor_alloc, ps.instruction};
 #else
         common_setup_args<L> unif{common, ps.task_iter, num_iters, globals, **scratch_smem, ps.instruction};
@@ -339,7 +339,7 @@ __global__ void kernel(const __grid_constant__ typename config::globals globals)
         timings[1][threadIdx.x] = 0;
     }
 #endif
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     constexpr int NCTA_TENSOR_ALLOC = detail::CLUSTER_BLOCKS_v<config> > 1 ? 2 : 1;
     tensor_allocator<1, NCTA_TENSOR_ALLOC> tensor_alloc{};
 #endif
@@ -362,7 +362,7 @@ __global__ void kernel(const __grid_constant__ typename config::globals globals)
         &outputs_finished[0],
         &finish_finished,
         0xFFFF0000, // semaphore_bitfield
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         tensor_alloc,
 #endif
 #ifdef KITTENS_TIMINGS

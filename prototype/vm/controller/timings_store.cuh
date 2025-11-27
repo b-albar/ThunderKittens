@@ -39,12 +39,12 @@ __device__ void inline store_timings_and_reset(int *timings, int instruction_ind
     if(laneid() == 0) {
         store_timings<config, globals>(timings, instruction_index, g);
         kittens::tma::store_async_read_wait();
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
         uint32_t src_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(timings));
-        asm volatile("st.bulk.weak [%0], %1, 0;\n" ::"r"(src_ptr), "n"(config::TIMING_WIDTH * sizeof(int))); // Reinitialize timing memory as zeros.   
+        asm volatile("st.bulk.weak [%0], %1, 0;\n" ::"r"(src_ptr), "n"(config::TIMING_WIDTH * sizeof(int))); // Reinitialize timing memory as zeros.
 #endif
     }
-#ifndef KITTENS_BLACKWELL
+#if KITTENS_ARCH < 1000
     __syncwarp();
     for(int i = laneid(); i < config::TIMING_WIDTH; i += WARP_THREADS) {
         timings[i] = 0;

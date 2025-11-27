@@ -16,7 +16,7 @@
 #define KITTENS_CHECK_WARPGROUP static_assert(GROUP_WARPS==4, "Warpgroup (GROUP_WARPS=4) function called from a non-warpgroup group.");
 
 // WGMMA relies on some template structures that cannot be specialized within the group struct, so we declare them in advance.
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 #include "mma/warpgroup/base/base.cuh"
 #endif
 
@@ -48,7 +48,7 @@ __device__ static inline void arrive(int id) {
 #include "register/register.cuh"
 #include "mma/mma.cuh"
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 template<int n_reg> __device__ static inline void increase_registers() {
     static_assert(n_reg % 8 == 0, "n_reg must be a multiple of 8");
     asm volatile("setmaxnreg.inc.sync.aligned.u32 %0;\n" :: "n"(n_reg));

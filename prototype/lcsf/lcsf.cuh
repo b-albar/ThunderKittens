@@ -16,7 +16,7 @@ template<typename lcsft> concept kernel_template = requires {
     lcsft::producer::setup;
     lcsft::producer::load;
     lcsft::producer::store;
-    lcsft::consumer::setup; 
+    lcsft::consumer::setup;
     lcsft::consumer::compute;
     lcsft::consumer::finish;
 } && kittens_layout<typename lcsft::layout>;
@@ -52,17 +52,17 @@ void kernel(const __grid_constant__ typename lcsft::layout::globals globals) {
     constexpr int NUM_CONSUMER_WARPS = detail::NUM_CONSUMER_WARPS_v<lcsft>;
     constexpr int NUM_PRODUCER_WARPS = detail::NUM_PRODUCER_WARPS_v<lcsft>;
 
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     constexpr int NCTA_TENSOR_ALLOC = detail::CLUSTER_BLOCKS_v<lcsft> > 1 ? 2 : 1;
     tensor_allocator<detail::NUM_BLOCKS_v<lcsft>, NCTA_TENSOR_ALLOC> tensor_alloc{};
 #endif
-    
+
     extern __shared__ int __shm[];
     shared_allocator alloc(&__shm[0]); // allocate shared memory
     scratch_alloc_block (&scratch_smem)                     = alloc.allocate<scratch_alloc_block>();
     input_alloc_block   (&input_smem)  [INPUT_PIPE_STAGES]  = alloc.allocate<input_alloc_block,  INPUT_PIPE_STAGES >();
     output_alloc_block  (&output_smem) [OUTPUT_PIPE_STAGES] = alloc.allocate<output_alloc_block, OUTPUT_PIPE_STAGES>();
-    
+
     // figure out where we're going to put the finish block
     constexpr int FINISH_BLOCK_OFFSET = (MAX_SHARED_MEMORY-1024)/detail::NUM_BLOCKS_v<lcsft> - sizeof(finish_block);
     static_assert(sizeof(scratch_alloc_block) + sizeof(finish_block) <= MAX_BLOCK_SHARED_MEMORY, "Finish block is too large for shared memory.");
@@ -86,11 +86,11 @@ void kernel(const __grid_constant__ typename lcsft::layout::globals globals) {
             printf("        num_consumer_warpgroups:           %d\n", detail::NUM_CONSUMER_WARPGROUPS_v<lcsft>);
             printf("        num_consumer_warps:                %d\n", detail::NUM_CONSUMER_WARPS_v<lcsft>);
             printf("        num_producer_warps:                %d\n", detail::NUM_PRODUCER_WARPS_v<lcsft>);
-            printf("    PIPELINE INFORMATION\n"); 
+            printf("    PIPELINE INFORMATION\n");
             printf("        input_pipe_stages:                 %d\n", INPUT_PIPE_STAGES);
             printf("        output_pipe_stages:                %d\n", OUTPUT_PIPE_STAGES);
             printf("        safe_stages_between_blocks:        %d\n", SAFE_STAGES_BETWEEN_BLOCKS);
-            printf("    SHARED MEMORY INFORMATION\n"); 
+            printf("    SHARED MEMORY INFORMATION\n");
             printf("        input_smem block size:             %llu\n", sizeof(input_block));
             printf("        input_smem block size (aligned):   %llu\n", sizeof(input_alloc_block));
             printf("        input_smem:                        %p\n", (void*)&input_smem);
@@ -136,7 +136,7 @@ void kernel(const __grid_constant__ typename lcsft::layout::globals globals) {
         producer_state p_state;
         for(int task_iter = 0; true; task_iter++) {
             int num_iters = 0;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem, tensor_alloc};
 #else
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem};
@@ -184,7 +184,7 @@ void kernel(const __grid_constant__ typename lcsft::layout::globals globals) {
         consumer_state c_state;
         for(int task_iter = 0; true; task_iter++) {
             int num_iters = 0;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem, tensor_alloc};
 #else
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem};
@@ -219,7 +219,7 @@ void kernel(const __grid_constant__ typename lcsft::layout::globals globals) {
     } // consumer warpgroup
     // all warps must arrive here, confirming semaphore initialization is visible to all threads.
     if constexpr (detail::CLUSTER_BLOCKS_v<lcsft> > 1) everyone::tma::cluster::sync();
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     else everyone::sync(15);
 #endif
 }

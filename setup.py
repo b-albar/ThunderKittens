@@ -38,13 +38,13 @@ cpp_flags = [
 ]
 
 if target == '4090':
-    cuda_flags.append('-DKITTENS_4090')
+    cuda_flags.append('-DKITTENS_ARCH=890')
     cuda_flags.append('-arch=sm_89')
 elif target == 'h100':
-    cuda_flags.append('-DKITTENS_HOPPER')
+    cuda_flags.append('-DKITTENS_ARCH=900')
     cuda_flags.append('-arch=sm_90a')
 elif target == 'a100':
-    cuda_flags.append('-DKITTENS_A100')
+    cuda_flags.append('-DKITTENS_ARCH=800')
     cuda_flags.append('-arch=sm_80')
 else:
     raise ValueError(f'Target {target} not supported')
@@ -64,9 +64,9 @@ setup(
     ext_modules=[
         CUDAExtension(
             'thunderkittens',
-            sources=source_files, 
+            sources=source_files,
             extra_compile_args={'cxx' : cpp_flags,
-                                'nvcc' : cuda_flags}, 
+                                'nvcc' : cuda_flags},
             libraries=['cuda']
         )
     ],

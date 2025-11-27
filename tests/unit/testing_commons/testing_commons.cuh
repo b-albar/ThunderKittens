@@ -1,7 +1,7 @@
 #pragma once
 
 /* testing_commons.cuh
- * 
+ *
  * This file contains a bunch of moderately test-specific utils.
  * For example, test_name constructors and __device__ kernel wrappers.
  * This file is distinguished from testing_utils.cuh in that you
@@ -94,14 +94,14 @@ template<int H, int W, int NW, kittens::ducks::base_types::T1 T2, kittens::ducks
     std::string label = generate_test_name<H,W,NW>(test_id);
     if constexpr (std::is_same_v<U2, float>) label += "_[float->";
     else if constexpr (std::is_same_v<U2, kittens::bf16>) label += "_[bf16->";
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     else if constexpr (std::is_same_v<U2, kittens::fp8e4m3>) label += "_[e4m3->";
     else if constexpr (std::is_same_v<U2, kittens::fp8e5m2>) label += "_[e5m2->";
     #endif
     else label += "_[half->";
     if constexpr (std::is_same_v<T2, float>) label += "float]";
     else if constexpr (std::is_same_v<T2, kittens::bf16>) label += "bf16]";
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     else if constexpr (std::is_same_v<T2, kittens::fp8e4m3>) label += "e4m3]";
     else if constexpr (std::is_same_v<T2, kittens::fp8e5m2>) label += "e5m2]";
     #endif
@@ -182,7 +182,7 @@ struct sweep_gmem_type_1d {
         sweep_size_1d<test<float>, MAX_S, NUM_WORKERS, args...>::run(results);
         sweep_size_1d<test<kittens::bf16>, MAX_S, NUM_WORKERS, args...>::run(results);
         sweep_size_1d<test<kittens::half>, MAX_S, NUM_WORKERS, args...>::run(results);
-        #ifdef KITTENS_HOPPER
+        #if KITTENS_ARCH == 900
         sweep_size_1d<test<kittens::fp8e4m3>, MAX_S, NUM_WORKERS, args...>::run(results);
         sweep_size_1d<test<kittens::fp8e5m2>, MAX_S, NUM_WORKERS, args...>::run(results);
         #endif
@@ -244,7 +244,7 @@ struct sweep_gmem_type_2d {
         sweep_size_2d<test<float>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         sweep_size_2d<test<kittens::bf16>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         sweep_size_2d<test<kittens::half>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
-        #ifdef KITTENS_HOPPER
+        #if KITTENS_ARCH == 900
         sweep_size_2d<test<kittens::fp8e4m3>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         sweep_size_2d<test<kittens::fp8e5m2>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         #endif

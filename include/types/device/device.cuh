@@ -5,7 +5,7 @@
 
 #pragma once
 
-#if defined(KITTENS_HOPPER) || defined(KITTENS_BLACKWELL)
+#if KITTENS_ARCH >= 900
 #include "ipc.cuh"
 #include "pgl.cuh"
 #include "vmm.cuh"

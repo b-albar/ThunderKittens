@@ -111,7 +111,7 @@ __device__ static inline void mma_async_wait() {
  - mm_AB    (reset) [DONE]
  - mma_ABt  (accum) [DONE]
  - mm_ABt   (reset) [DONE]
- 
+
  SMEM+SMEM -> REG
  - mma_AB   (accum) [DONE]
  - mm_AB    (reset) [DONE]
@@ -121,7 +121,7 @@ __device__ static inline void mma_async_wait() {
  - mm_AtB   (reset) [DONE]
  - mma_AtBt (accum) [DONE]
  - mm_AtBt  (reset) [DONE]
- 
+
 Note: mma is an alias for mma_AB and dot is an alias for mma_ABt
 */
 
@@ -156,7 +156,7 @@ __device__ static inline void mma_AB(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif
@@ -211,7 +211,7 @@ __device__ static inline void mma_AB(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif
@@ -406,7 +406,7 @@ __device__ static inline void mma_AtB(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif
@@ -469,7 +469,7 @@ __device__ static inline void mma_AtBt(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif
@@ -521,7 +521,7 @@ __device__ static inline void mm_AtBt(D &d,
  - mm_AB    (reset) [TODO]
  - mma_ABt  (accum) [TODO]
  - mm_ABt   (reset) [TODO]
- 
+
  SMEM+SMEM -> REG
  - mma_AB   (accum) [TODO]
  - mm_AB    (reset) [TODO]
@@ -531,7 +531,7 @@ __device__ static inline void mm_AtBt(D &d,
  - mm_AtB   (reset) [TODO]
  - mma_AtBt (accum) [TODO]
  - mm_AtBt  (reset) [TODO]
- 
+
 Note: mma is an alias for mma_AB and dot is an alias for mma_ABt
 */
 
@@ -566,7 +566,7 @@ __device__ static inline void mma_AB(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif
@@ -659,7 +659,7 @@ __device__ static inline void mma_AB(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif
@@ -962,7 +962,7 @@ __device__ static inline void mma_AtB(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif
@@ -1060,7 +1060,7 @@ __device__ static inline void mma_AtBt(D &d,
     // Usings
     using T_AB = A::T;
     using T_D  = D::T;
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(!std::is_same_v<T_AB, fp8e4m3> && !std::is_same_v<T_AB, fp8e5m2>, "Currently unsupported type");
     static_assert(!std::is_same_v<T_D, fp8e4m3> && !std::is_same_v<T_D, fp8e5m2>, "Currently unsupported type");
     #endif

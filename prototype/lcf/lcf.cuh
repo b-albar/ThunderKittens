@@ -15,7 +15,7 @@ template<typename lcft> concept kernel_template = requires {
     lcft::common_setup;
     lcft::producer::setup;
     lcft::producer::load;
-    lcft::consumer::setup; 
+    lcft::consumer::setup;
     lcft::consumer::compute;
     lcft::consumer::finish;
 } && kittens_layout<typename lcft::layout>;
@@ -45,16 +45,16 @@ void kernel(const __grid_constant__ typename lcft::layout::globals globals) {
     constexpr int NUM_CONSUMER_WARPS = detail::NUM_CONSUMER_WARPS_v<lcft>;
     constexpr int NUM_PRODUCER_WARPS = detail::NUM_PRODUCER_WARPS_v<lcft>;
 
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     constexpr int NCTA_TENSOR_ALLOC = detail::CLUSTER_BLOCKS_v<lcft> > 1 ? 2 : 1;
     tensor_allocator<detail::NUM_BLOCKS_v<lcft>, NCTA_TENSOR_ALLOC> tensor_alloc{};
 #endif
-    
+
     extern __shared__ int __shm[];
     shared_allocator alloc(&__shm[0]); // allocate shared memory
     scratch_alloc_block (&scratch_smem)                     = alloc.allocate<scratch_alloc_block>();
     input_alloc_block   (&input_smem)  [INPUT_PIPE_STAGES]  = alloc.allocate<input_alloc_block,  INPUT_PIPE_STAGES>();
-    
+
     // figure out where we're going to put the finish block
     constexpr int FINISH_BLOCK_OFFSET = (MAX_SHARED_MEMORY-1024)/detail::NUM_BLOCKS_v<lcft> - sizeof(finish_block);
     static_assert(FINISH_BLOCK_OFFSET >= 0, "Finish block is too large for shared memory.");
@@ -78,10 +78,10 @@ void kernel(const __grid_constant__ typename lcft::layout::globals globals) {
             printf("        num_consumer_warpgroups:           %d\n", detail::NUM_CONSUMER_WARPGROUPS_v<lcft>);
             printf("        num_consumer_warps:                %d\n", detail::NUM_CONSUMER_WARPS_v<lcft>);
             printf("        num_producer_warps:                %d\n", detail::NUM_PRODUCER_WARPS_v<lcft>);
-            printf("    PIPELINE INFORMATION\n"); 
+            printf("    PIPELINE INFORMATION\n");
             printf("        input_pipe_stages:                 %d\n", INPUT_PIPE_STAGES);
             printf("        safe_stages_between_blocks:        %d\n", SAFE_STAGES_BETWEEN_BLOCKS);
-            printf("    SHARED MEMORY INFORMATION\n"); 
+            printf("    SHARED MEMORY INFORMATION\n");
             printf("        input_smem block size:             %llu\n", sizeof(input_block));
             printf("        input_smem block size (aligned):   %llu\n", sizeof(input_alloc_block));
             printf("        input_smem:                        %p\n", (void*)&input_smem);
@@ -117,7 +117,7 @@ void kernel(const __grid_constant__ typename lcft::layout::globals globals) {
         producer_state p_state;
         for(int task_iter = 0; true; task_iter++) {
             int num_iters = -1;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem, tensor_alloc};
 #else
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem};
@@ -151,7 +151,7 @@ void kernel(const __grid_constant__ typename lcft::layout::globals globals) {
         consumer_state c_state;
         for(int task_iter = 0; true; task_iter++) {
             int num_iters = -1;
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem, tensor_alloc};
 #else
             common_setup_args<L> unif{common, task_iter, num_iters, globals, *scratch_smem};
@@ -176,7 +176,7 @@ void kernel(const __grid_constant__ typename lcft::layout::globals globals) {
     } // consumer warpgroup
     // all warps must arrive here, confirming semaphore initialization is visible to all threads.
     if constexpr (detail::CLUSTER_BLOCKS_v<lcft> > 1) everyone::tma::cluster::sync();
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     else everyone::sync(15);
 #endif
 }

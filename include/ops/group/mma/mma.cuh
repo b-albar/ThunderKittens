@@ -7,11 +7,11 @@
 #include "warp/warp.cuh"
 
 // Hopper has its own warpgroup-scope MMA operations.
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 #include "warpgroup/warpgroup.cuh"
 #endif
 
 // Blackwell has its own tensor-scope MMA operations.
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
 #include "tensor/tensor.cuh"
 #endif

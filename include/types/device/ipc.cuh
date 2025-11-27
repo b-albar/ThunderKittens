@@ -36,7 +36,7 @@ enum flavor {
 template<flavor _flavor>
 struct handle;
 
-template<> 
+template<>
 struct handle<flavor::LEGACY> {
     using identifier = ducks::ipc::handle::identifier;
     static constexpr flavor flavor_ = flavor::LEGACY;
@@ -156,7 +156,8 @@ __host__ inline static void enable_all_peer_access(int num_devices) {
 
     for (int i = 0; i < num_devices; i++) {
         CUCHECK(cuDeviceGet(&devices[i], i));
-        CUCHECK(cuCtxCreate(&contexts[i], 0, devices[i]));
+        CUctxCreateParams ctxParams = {};
+        CUCHECK(cuCtxCreate(&contexts[i], &ctxParams, 0, devices[i]));
     }
 
     for (int i = 0; i < num_devices; i++) {
@@ -169,7 +170,7 @@ __host__ inline static void enable_all_peer_access(int num_devices) {
         CUCHECK(cuDeviceGetAttribute(&vmm_supported, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED, devices[i]));
         if (!vmm_supported)
         throw std::runtime_error("Device does not support CUDA VMM");
-    
+
         int ipc_handle_supported;
         CUCHECK(cuDeviceGetAttribute(&ipc_handle_supported, CU_DEVICE_ATTRIBUTE_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR_SUPPORTED, devices[i]));
         if (!ipc_handle_supported)

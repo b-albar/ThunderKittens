@@ -2,13 +2,13 @@
  * @file
  * @brief Templated layouts for global memory.
  */
- 
+
 #pragma once
 
 #include "../../common/common.cuh"
 #include "../shared/shared.cuh"
 #include "util.cuh"
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 #include <utility>
 #include "tma.cuh"
 #endif
@@ -26,7 +26,7 @@ struct dim {
 
 /* ----------   Associative dictionary for global layouts  ---------- */
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 namespace ducks {
 namespace tma {
 namespace descriptor {
@@ -54,7 +54,7 @@ template<typename _T, int _axis=-9999, bool _swizzle_flag=true> struct descripto
     using T = detail::tma::descriptor_copy_helper_t<_T>;
     static_assert(ducks::st::all<T> || ducks::sv::all<T> || ducks::tma::descriptor::all<T>, "Must be a shared TK type to generate a TMA descriptor.");
     static constexpr int axis = (
-        ducks::tma::descriptor::all<_T> ? detail::tma::descriptor_copy_helper_v<_T> : // if a copy, inherit the axis from the original descriptor. 
+        ducks::tma::descriptor::all<_T> ? detail::tma::descriptor_copy_helper_v<_T> : // if a copy, inherit the axis from the original descriptor.
         (_axis != -9999) ? _axis : detail::tma::descriptor_copy_helper_v<_T>); // if a default value was provided, use it.
     static_assert((kittens::ducks::st::all<T> && axis >= 0 && axis <= 2) || (kittens::ducks::sv::all<T> && axis == -1), "Internal template error detected.");
     static constexpr bool swizzle_flag = ducks::tma::descriptor::all<_T> ? detail::tma::descriptor_copy_helper_swizzle_flag<_T> : _swizzle_flag;
@@ -68,7 +68,7 @@ struct descriptor_dict {
     __host__ descriptor_dict() {}
     template<typename T> __host__ descriptor_dict(T _, int b, int d, int r, int c) {}
     __host__ __device__ descriptor_dict(const descriptor_dict &other) {}
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
     template<typename T, int U> __device__ const CUtensorMap* get() const {
         static_assert(
             std::is_same_v<T, std::true_type> && std::is_same_v<T, std::false_type>,
@@ -78,7 +78,7 @@ struct descriptor_dict {
 #endif
 };
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 template<typename _T, typename... Args>
 struct descriptor_dict<_T, Args...> {
     static_assert(ducks::sv::all<_T> || ducks::st::all<_T> || ducks::tma::descriptor::all<_T>, "Must be a shared TK type to generate a TMA descriptor.");
@@ -145,7 +145,7 @@ struct gl {
     }
     __host__ __device__ inline gl(const gl &other) :
             raw_ptr(other.raw_ptr), batch_internal(other.batch_internal), depth_internal(other.depth_internal), rows_internal(other.rows_internal), cols_internal(other.cols_internal), tma_descs(other.tma_descs) {}
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
     template<typename U, int axis> __device__ inline const CUtensorMap* get_tma() const {
         return tma_descs.template get<U, axis>();
     }
@@ -160,7 +160,7 @@ struct gl {
         else if constexpr (axis==2) { return size_t(rows()); }
         else if constexpr (axis==3) { return size_t(cols()); }
     }
-    template<int axis> __device__ inline size_t stride() const { 
+    template<int axis> __device__ inline size_t stride() const {
         static_assert(axis==0 || axis==1 || axis==2 || axis==3, "Axis must be 0, 1, 2, or 3.");
         if      constexpr (axis==0) { return depth()*rows()*cols(); }
         else if constexpr (axis==1) { return rows()*cols(); }

@@ -334,7 +334,7 @@ struct rms_matvec_pipeline
   __device__ static inline void launcher_loop(state<Config> &s,
                                               const Globals &g) {
     if (laneid() == 0) {
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
       s.wait_tensor_ready();
       arrive(s.tensor_finished, Config::NUM_CONSUMER_WARPS);
 #endif

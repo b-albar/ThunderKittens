@@ -2,7 +2,7 @@
  * @file
  * @brief The basic 16x16 register tile on which larger register tiles are built.
  */
- 
+
 #pragma once
 
 #include <type_traits>
@@ -18,13 +18,13 @@ namespace kittens {
 namespace ducks {
 /**
  * @namespace rt_base
- * 
+ *
  * @brief The namespace where concepts and abstract types for register base (16x16) tiles live.
  */
 namespace rt_base {
 /**
  * @brief A dummy type used to identify register base tiles.
- * 
+ *
  * For a type to quack like an rt_base, it should define its identifier as ducks::rt_base::identifier.
  * If a type quacks like ducks::rt_base::identifier, it will be treated as an rt_base by compiler checks.
  */
@@ -40,7 +40,7 @@ struct identifier {};
  *
  * This type is a primarily utility for building larger inline templates
  * out of PTX primitives and managing layouts.
- * 
+ *
  * In general, you probably want a row-major tile, unless you specifically want to call mma
  */
 template<typename _T, ducks::rt_layout::all _layout> struct rt_base {
@@ -51,7 +51,7 @@ template<typename _T, ducks::rt_layout::all _layout> struct rt_base {
     using T2 = kittens::base_types::packing<_T>::packed_type;
     using dtype = T2; ///< Data type of the matrix elements
 
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(
         std::is_same_v<dtype, bf16_2> || std::is_same_v<dtype, float2> || std::is_same_v<dtype, half_2> || std::is_same_v<dtype, fp8e4m3_4> || std::is_same_v<dtype, fp8e5m2_4>,
         "rt_base was provided an unsupported type."
@@ -105,7 +105,7 @@ template<typename T> concept all = requires {
 template<ducks::rt_layout::all L=ducks::rt_layout::row> using rt_base_fl = rt_base<float, L>;
 template<ducks::rt_layout::all L=ducks::rt_layout::row> using rt_base_bf = rt_base<bf16, L>;
 template<ducks::rt_layout::all L=ducks::rt_layout::row> using rt_base_hf = rt_base<half, L>;
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 template<ducks::rt_layout::all L=ducks::rt_layout::row> using rt_base_fp8e4m3 = rt_base<fp8e4m3, L>;
 template<ducks::rt_layout::all L=ducks::rt_layout::row> using rt_base_fp8e5m2 = rt_base<fp8e5m2, L>;
 #endif

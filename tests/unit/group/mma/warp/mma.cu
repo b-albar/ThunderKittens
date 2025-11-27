@@ -131,7 +131,7 @@ struct test_mma_AB_half {
             for(int j = 0; j < W*16; j++) {
                 float sum = 0;
                 for(int k = 0; k < K*16; k++) {
-                    sum += __half2float(__float2half(i_ref[i*16*K + k])) * 
+                    sum += __half2float(__float2half(i_ref[i*16*K + k])) *
                           __half2float(__float2half(i_ref[(256*H*K) + k*16*W + j]));
                 }
                 o_ref[i*16*W + j] = sum;
@@ -162,7 +162,7 @@ struct test_mma_ABt_half {
             for(int j = 0; j < W*16; j++) {
                 float sum = 0;
                 for(int k = 0; k < K*16; k++) {
-                    sum += __half2float(__float2half(i_ref[i*K*16+k])) * 
+                    sum += __half2float(__float2half(i_ref[i*K*16+k])) *
                           __half2float(__float2half(i_ref[256*K*H + j*K*16+k]));
                 }
                 o_ref[i*W*16+j] = sum;
@@ -194,7 +194,7 @@ struct test_mma_AtB_half {
             for(int j = 0; j < W*16; j++) {
                 float sum = 0;
                 for(int k = 0; k < K*16; k++) {
-                    sum += __half2float(__float2half(i_ref[i + k*16*H])) * 
+                    sum += __half2float(__float2half(i_ref[i + k*16*H])) *
                           __half2float(__float2half(i_ref[(256*H*K) + k*16*W + j]));
                 }
                 o_ref[i*16*W + j] = sum;
@@ -226,7 +226,7 @@ struct test_mma_AtBt_half {
             for(int j = 0; j < W*16; j++) {
                 float sum = 0;
                 for(int k = 0; k < K*16; k++) {
-                    sum += __half2float(__float2half(i_ref[i+k*H*16])) * 
+                    sum += __half2float(__float2half(i_ref[i+k*H*16])) *
                           __half2float(__float2half(i_ref[256*K*H + j*K*16+k]));
                 }
                 o_ref[i*W*16+j] = sum;
@@ -249,12 +249,12 @@ struct test_mma_AtBt_half {
     template<int H, int W, typename K> using make_c_layout = typename kittens::gl<float, 1, 1, 16*H, 16*W>;
 };
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 struct test_mma_ABt_fp8 {
     using dtype = kittens::fp8e4m3;
     template<int H, int W, int NW, typename K> using valid = std::bool_constant<
-        ( NW == 1 && (2*W*H+W*K::value+H*K::value)<=64) 
-        && ( W%2 == 0 && H%2 == 0 && K::value%2 == 0) 
+        ( NW == 1 && (2*W*H+W*K::value+H*K::value)<=64)
+        && ( W%2 == 0 && H%2 == 0 && K::value%2 == 0)
     >; // this is warp-level
     static inline const std::string test_identifier = "warp_mma_ABt_fp8";
     template<int H, int W, int NW, gl_t GTL_A, gl_t GTL_B, gl_t GTL_C, typename _K> __host__ static void host_func(const std::vector<float> &i_ref, std::vector<float> &o_ref) {
@@ -273,7 +273,7 @@ struct test_mma_ABt_fp8 {
         constexpr int K = _K::value;
         extern __shared__ kittens::alignment_dummy __shm[]; // this is the CUDA shared memory
 
-        kittens::shared_allocator al((int*)&__shm[0]); 
+        kittens::shared_allocator al((int*)&__shm[0]);
         kittens::st<float, 16*H, 16*K> &a_st = al.allocate<kittens::st<float, 16*H, 16*K>>(); // since we dofloat
         kittens::st<float, 16*W, 16*K> &b_st = al.allocate<kittens::st<float, 16*W, 16*K>>();
         kittens::st<float, 16*H, 16*W> &c_st = al.allocate<kittens::st<float, 16*H, 16*W>>();
@@ -348,8 +348,8 @@ template<typename test, int MAX_H=8, int MAX_W=8, int NUM_WORKERS=1, typename...
 template<typename test, int MAX_H=8, int MAX_W=8, typename... args> using mma_sweep_size_warp = mma_sweep_size<test, MAX_H, MAX_W, 1, args...>;
 
 
-#ifdef KITTENS_HOPPER
-// fp8 
+#if KITTENS_ARCH == 900
+// fp8
 template<typename test, int H, int W, int NUM_WORKERS, typename _K, typename... args>
 struct mma_wrapper_2d_fp8 {
     static void run(test_data& results) {
@@ -395,7 +395,7 @@ template<typename test, int MAX_H=8, int MAX_W=8, typename... args> using mma_sw
 void group::mma::warp::mma::tests(test_data &results) {
     std::cout << " ----- Starting ops/group/mma/warp/mma tests! -----\n" << std::endl;
     constexpr int SIZE = INTENSITY_1 ? 2  :
-                         INTENSITY_2 ? 4  : 
+                         INTENSITY_2 ? 4  :
                          INTENSITY_3 ? 8  :
                          INTENSITY_4 ? 16 : -1;
     // bf16
@@ -416,7 +416,7 @@ void group::mma::warp::mma::tests(test_data &results) {
     mma_sweep_size_warp<test_mma_AtBt, SIZE, SIZE, std::integral_constant<int, 3>>::run(results);
     mma_sweep_size_warp<test_mma_AtBt, SIZE, SIZE, std::integral_constant<int, 4>>::run(results);
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
     // fp8
     mma_sweep_size_warp_fp8<test_mma_ABt_fp8, SIZE, SIZE, std::integral_constant<int, 1>>::run(results);
     mma_sweep_size_warp_fp8<test_mma_ABt_fp8, SIZE, SIZE, std::integral_constant<int, 2>>::run(results);

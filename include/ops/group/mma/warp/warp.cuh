@@ -137,7 +137,7 @@ __device__ static inline void hmma16816(      half_2 &d0,       half_2 &d1,
     );
 }
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
 * @brief Perform the HMMA.16816 operation for FP8 using fp8e4m3_2.
 *
@@ -157,7 +157,7 @@ __device__ static inline void hmma16816(      half_2 &d0,       half_2 &d1,
  * @param[in] c0,c1 Input float2 accumulator matrix C values
  */
 __device__ static inline void hmma16816(      float2 &d0,       float2 &d1,
-                                       const fp8e4m3_4 &a0, const fp8e4m3_4 &a1, 
+                                       const fp8e4m3_4 &a0, const fp8e4m3_4 &a1,
                                        const fp8e4m3_4 &a2, const fp8e4m3_4 &a3,
                                        const fp8e4m3_4 &b0, const fp8e4m3_4 &b1,
                                        const float2 &c0, const float2 &c1) {
@@ -167,18 +167,18 @@ __device__ static inline void hmma16816(      float2 &d0,       float2 &d1,
         "{%4, %5, %6, %7}, "
         "{%8, %9}, "
         "{%10, %11, %12, %13};"
-        
+
         // D matrix (output)
         : "+f"(d0.x), "+f"(d0.y),
           "+f"(d1.x), "+f"(d1.y)
-        
+
         // A matrix
         : "r"(*(uint32_t*)(&a0)), "r"(*(uint32_t*)(&a1)),
           "r"(*(uint32_t*)(&a2)), "r"(*(uint32_t*)(&a3)),
-        
+
         // B matrix
         "r"(*(uint32_t*)(&b0)), "r"(*(uint32_t*)(&b1)),
-        
+
         // C matrix
         "f"(c0.x), "f"(c0.y),
         "f"(c1.x), "f"(c1.y)
@@ -243,7 +243,7 @@ __device__ static inline void mma_AB_base(rt_base<float, ducks::rt_layout::row> 
         c.data[2], c.data[3]
     );
 }
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
  * @brief Base matrix multiply-accumulate operation for row layout.
  *
@@ -358,7 +358,7 @@ __device__ static inline void mma_ABt_base(rt_base<float, ducks::rt_layout::row>
         c.data[2], c.data[3]
     );
 }
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
  * @brief Base dot product operation for row layout.
  *
@@ -447,7 +447,7 @@ __device__ static inline void mma_AtB_base(rt_base<float, ducks::rt_layout::row>
         c.data[2], c.data[3]
     );
 }
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
  * @brief Base matrix multiply-accumulate operation for row layout with transposed A.
  *
@@ -535,7 +535,7 @@ __device__ static inline void mma_AtBt_base(rt_base<float, ducks::rt_layout::row
         c.data[2], c.data[3]
     );
 }
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
  * @brief Base matrix multiply-accumulate operation for row layout with transposed A and B.
  *
@@ -589,7 +589,7 @@ __device__ static inline void mma_AB(D &d,
     static_assert(D::rows == A::rows && D::cols == B::cols); // Check D matches A, B
     static_assert(A::cols == B::rows); // Check reduction dim is same
     static_assert(D::rows == C::rows && D::cols == C::cols); // Check D matches C
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(
         (std::is_same_v<typename D::T, float> && std::is_same_v<typename A::T, bf16> &&
             std::is_same_v<typename B::T, bf16> && std::is_same_v<typename C::T, float>) ||
@@ -653,7 +653,7 @@ __device__ static inline void mma_ABt(D &d,
     static_assert(D::rows == A::rows && D::cols == B::rows); // Check D matches A, B
     static_assert(A::cols == B::cols); // Check reduction dim is same
     static_assert(D::rows == C::rows && D::cols == C::cols); // Check D matches C
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(
         (std::is_same_v<typename D::T, float> && std::is_same_v<typename A::T, bf16> &&
             std::is_same_v<typename B::T, bf16> && std::is_same_v<typename C::T, float>) ||
@@ -717,7 +717,7 @@ __device__ static inline void mma_AtB(D &d,
     static_assert(D::rows == A::cols && D::cols == B::cols); // Check D matches A, B
     static_assert(A::rows == B::rows); // Check reduction dim is same
     static_assert(D::rows == C::rows && D::cols == C::cols); // Check D matches C
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(
         (std::is_same_v<typename D::T, float> && std::is_same_v<typename A::T, bf16> &&
             std::is_same_v<typename B::T, bf16> && std::is_same_v<typename C::T, float>) ||
@@ -781,7 +781,7 @@ __device__ static inline void mma_AtBt(D &d,
     static_assert(D::rows == A::cols && D::cols == B::rows); // Check D matches A, B
     static_assert(A::rows == B::cols); // Check reduction dim is same
     static_assert(D::rows == C::rows && D::cols == C::cols); // Check D matches C
-    #ifdef KITTENS_HOPPER
+    #if KITTENS_ARCH == 900
     static_assert(
         (std::is_same_v<typename D::T, float> && std::is_same_v<typename A::T, bf16> &&
             std::is_same_v<typename B::T, bf16> && std::is_same_v<typename C::T, float>) ||
@@ -893,7 +893,7 @@ __device__ static inline void mma_AB(crt_hf<N, M, ducks::rt_layout::row> &d,
                                const crt_hf<K, M, ducks::rt_layout::col> &b,
                                const crt_hf<N, M, ducks::rt_layout::row> &c) {
     KITTENS_CHECK_WARP
-    
+
     // Copy data from input accumulate register into output
     ::kittens::group<1>::copy(d.real, c.real);
     ::kittens::group<1>::copy(d.imag, c.imag);
@@ -929,7 +929,7 @@ __device__ static inline void mma_AB(crt_fl<N, M, ducks::rt_layout::row> &d,
                                const crt_bf<K, M, ducks::rt_layout::col> &b,
                                const crt_fl<N, M, ducks::rt_layout::row> &c) {
     KITTENS_CHECK_WARP
-    
+
     // Copy data from input accumulate register into output
     ::kittens::group<1>::copy(d.real, c.real);
     ::kittens::group<1>::copy(d.imag, c.imag);

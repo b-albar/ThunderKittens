@@ -8,6 +8,4 @@
 // no namespace wrapper needed here
 
 #include "memory/memory.cuh"
-#ifdef KITTENS_BLACKWELL
 #include "mma/mma.cuh"
-#endif

@@ -161,7 +161,7 @@ template<> struct move<float4> {
         asm volatile("st.global.v4.f32 [%4], {%0, %1, %2, %3};\n" : : "f"(src.x), "f"(src.y), "f"(src.z), "f"(src.w), "l"(dst));
     }
 };
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 template<> struct move<fp8e4m3_4> {
     __device__ static inline void ldsm4(fp8e4m3_4& dst1, fp8e4m3_4& dst2, fp8e4m3_4& dst3, fp8e4m3_4& dst4, uint32_t src) {
         asm volatile("ldmatrix.sync.aligned.m8n8.x4.shared::cta.b16 {%0, %1, %2, %3}, [%4];\n" :
@@ -342,7 +342,7 @@ template<int num_warps> __device__ static inline void arrive(barrier<num_warps> 
     asm volatile("bar.arrive %0, %1;\n" :: "r"(bar.barrier_id), "n"(num_warps*WARP_THREADS) : "memory");
 }
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
 * @brief Arrives at a semaphore.
 *
@@ -372,7 +372,7 @@ __device__ static inline void wait(semaphore& sem, int kPhaseBit) {
     void const* const ptr = &sem;
     uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
     asm volatile (
         "{\n"
         ".reg .pred                P1;\n"
@@ -406,7 +406,7 @@ __device__ static inline void careful_wait(semaphore& sem, int kPhaseBit) {
     void const* const ptr = &sem;
     uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
     asm volatile (
         "{\n"
         ".reg .b64                 start_clock, current_clock;\n"
@@ -501,11 +501,11 @@ template<typename T, typename... Args> inline constexpr uint32_t size_bytes<T, A
 
 } // namespace kittens
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 #include "multimem.cuh"
 #include "tma.cuh"
 #endif
 
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
 #include "tensor.cuh"
 #endif

@@ -35,7 +35,7 @@ struct NoOp {
         // launcher does nothing here, since this doesn't use tensor cores.
         template <typename globals>
         static __device__ void run(const globals &g, state<config> &s) {
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
             s.wait_tensor_ready();
             if (laneid() == 0)
                 arrive(s.tensor_finished, config::NUM_CONSUMER_WARPS);

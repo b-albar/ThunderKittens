@@ -187,7 +187,7 @@ template<cache_policy policy> __device__ static inline void vec_load_async_tma_i
 
 namespace cluster {
 template<cache_policy policy> __device__ static inline void vec_load_async_tma_internal(uint64_t tma_ptr, uint32_t dst_i_ptr, uint32_t mbar_ptr, coord<> tma_coord, uint16_t cluster_mask, int dst_mbar_cta=-1) {
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     if(dst_mbar_cta != -1) {
         uint32_t neighbor_mbar_ptr;
         asm volatile (
@@ -215,7 +215,7 @@ template<cache_policy policy> __device__ static inline void vec_load_async_tma_i
                 : "memory"
             );
         }
-    } else 
+    } else
 #endif
     if constexpr (policy == cache_policy::NORMAL) {
         asm volatile (

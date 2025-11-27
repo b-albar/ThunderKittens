@@ -5,7 +5,7 @@
 namespace kittens::prototype::vm {
 
 
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
     template <kittens::ducks::st::all st_t>
     __device__ static inline void matvec(sv_fl<st_t::rows> &out_smem, st_t &weights_smem, rv_fl<st_t::cols> &activations) {
         using rt_t = rt_bf<st_t::rows, st_t::cols>;

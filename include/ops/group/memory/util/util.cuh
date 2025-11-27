@@ -35,7 +35,7 @@ __device__ static inline void arrive_and_wait(barrier<GROUP_WARPS> bar) {
 __device__ static inline void init_semaphore(semaphore& bar, int thread_count, int transaction_count=0) {
     if (laneid() == 0) {
         void const* const ptr = &bar;
-        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr)); 
+        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
 
         asm volatile (
             "mbarrier.init.shared::cta.b64 [%0], %1;\n"
@@ -52,7 +52,7 @@ __device__ static inline void init_semaphore(semaphore& bar, int thread_count, i
 __device__ static inline void invalidate_semaphore(semaphore& bar) {
     if (laneid() == 0) {
         void const* const ptr = &bar;
-        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr)); 
+        uint32_t bar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
         asm volatile (
             "mbarrier.inval.shared::cta.b64 [%0];\n"
             :: "r"(bar_ptr)
@@ -70,7 +70,7 @@ __device__ static inline void invalidate_semaphore(semaphore& bar) {
 */
 __device__ static inline void arrive(semaphore& sem) {
     if(laneid() == 0) {
-            uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(&sem)); 
+            uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(&sem));
             asm volatile (
                 "mbarrier.arrive.release.cta.shared::cta.b64 _, [%0];\n"
             :
@@ -83,7 +83,7 @@ template<int num_warps> __device__ static inline void arrive(barrier<num_warps> 
     asm volatile("bar.arrive %0, %1;\n" :: "r"(bar.barrier_id), "n"(num_warps*WARP_THREADS) : "memory");
 }
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 /**
 * @brief Arrives at a semaphore.
 *
@@ -113,9 +113,9 @@ __device__ static inline void arrive(semaphore& sem, uint32_t count) {
 */
 __device__ static inline void wait(semaphore& sem, int kPhaseBit) {
     void const* const ptr = &sem;
-    uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr)); 
+    uint32_t mbar_ptr = static_cast<uint32_t>(__cvta_generic_to_shared(ptr));
 
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
     asm volatile (
         "{\n"
         ".reg .pred                P1;\n"

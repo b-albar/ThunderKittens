@@ -6,8 +6,12 @@
 #include "shared_to_register.cuh"
 #include "global_to_register.cuh"
 #include "global_to_shared.cuh"
+
+#if KITTENS_ARCH == 900
 #include "pgl_to_register.cuh"
-#ifdef KITTENS_BLACKWELL
+#endif
+
+#if KITTENS_ARCH >= 1000
 #include "tensor_to_register.cuh"
 #endif
 

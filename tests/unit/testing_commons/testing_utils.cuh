@@ -162,14 +162,14 @@ void initialize(T **d_i, T **d_o, std::vector<float> &i_ref, std::vector<float> 
             i_t[idx] = __float2half(f);
             i_ref[idx] = __half2float(i_t[idx]);
         }
-        #ifdef KITTENS_HOPPER
+        #if KITTENS_ARCH == 900
         else if constexpr (std::is_same_v<T, fp8e4m3>) {
-            i_t[idx] = __nv_fp8_e4m3(f); 
-            i_ref[idx] = float(i_t[idx]); 
-        } 
+            i_t[idx] = __nv_fp8_e4m3(f);
+            i_ref[idx] = float(i_t[idx]);
+        }
         else if constexpr (std::is_same_v<T, fp8e5m2>) {
-            i_t[idx] = __nv_fp8_e5m2(f); 
-            i_ref[idx] = float(i_t[idx]); 
+            i_t[idx] = __nv_fp8_e5m2(f);
+            i_ref[idx] = float(i_t[idx]);
         }
         #endif
         else {
@@ -196,16 +196,16 @@ static void initialize(
     size_t *d_o_alloc_size,
     size_t *d_i_mc_alloc_size,
     size_t *d_o_mc_alloc_size,
-    std::vector<std::vector<float>> &i_ref, 
+    std::vector<std::vector<float>> &i_ref,
     std::vector<std::vector<float>> &o_ref
 ) {
-    
+
     const int input_size  = i_ref[0].size();
     const int output_size = o_ref[0].size();
-    
+
     // Initialize matrices
     std::vector<T> i_t(input_size);
-    
+
     std::mt19937 gen(SEED); // Standard mersenne_twister_engine
     std::uniform_real_distribution<float> dis(-1.0, 1.0);
 
@@ -249,7 +249,7 @@ static void initialize(
 
         if (dev_idx == 0) {
             kittens::detail::vmm::multicast_create_handle(&d_i_mc_handle, d_i_mc_alloc_size, *d_i_alloc_size, NUM_DEVICES);
-            kittens::detail::vmm::multicast_create_handle(&d_o_mc_handle, d_o_mc_alloc_size, *d_o_alloc_size, NUM_DEVICES);        
+            kittens::detail::vmm::multicast_create_handle(&d_o_mc_handle, d_o_mc_alloc_size, *d_o_alloc_size, NUM_DEVICES);
         }
         kittens::detail::vmm::multicast_check(dev_idx);
         kittens::detail::vmm::multicast_bind_device(d_i_mc_handle, dev_idx);
@@ -296,14 +296,14 @@ test_result validate(T *d_i, T *d_o, const std::vector<float> &i_ref, std::vecto
             o[idx] = o_t[idx];
             o_ref[idx] = o_ref[idx];
         }
-        #ifdef KITTENS_HOPPER
+        #if KITTENS_ARCH == 900
         else if constexpr(std::is_same_v<T, fp8e4m3>) {
             o[idx] = float(o_t[idx]);
-            o_ref[idx] = float(__nv_fp8_e4m3(o_ref[idx])); 
+            o_ref[idx] = float(__nv_fp8_e4m3(o_ref[idx]));
         }
         else if constexpr(std::is_same_v<T, fp8e5m2>) {
             o[idx] = float(o_t[idx]);
-            o_ref[idx] = float(__nv_fp8_e5m2(o_ref[idx])); 
+            o_ref[idx] = float(__nv_fp8_e5m2(o_ref[idx]));
         }
         #endif
         else {
@@ -399,14 +399,14 @@ test_result validate(
                 o[unit_idx] = o_t[unit_idx];
                 o_ref[dev_idx][idx] = o_ref[dev_idx][idx];
             }
-            #ifdef KITTENS_HOPPER
+            #if KITTENS_ARCH == 900
             else if constexpr(std::is_same_v<T, kittens::fp8e4m3>) {
                 o[unit_idx] = float(o_t[unit_idx]);
-                o_ref[dev_idx][idx] = float(__nv_fp8_e4m3(o_ref[dev_idx][idx])); 
+                o_ref[dev_idx][idx] = float(__nv_fp8_e4m3(o_ref[dev_idx][idx]));
             }
             else if constexpr(std::is_same_v<T, kittens::fp8e5m2>) {
                 o[unit_idx] = float(o_t[unit_idx]);
-                o_ref[dev_idx][idx] = float(__nv_fp8_e5m2(o_ref[dev_idx][idx])); 
+                o_ref[dev_idx][idx] = float(__nv_fp8_e5m2(o_ref[dev_idx][idx]));
             }
             #endif
             else {
@@ -460,7 +460,7 @@ test_result validate(
     kittens::detail::vmm::handle d_in_mc_handle;
     kittens::detail::vmm::handle d_out_mc_handle;
     kittens::detail::vmm::vm_retrieve_handle(&d_in_mc_handle, input.mc_ptr);
-    kittens::detail::vmm::vm_retrieve_handle(&d_out_mc_handle, output.mc_ptr);        
+    kittens::detail::vmm::vm_retrieve_handle(&d_out_mc_handle, output.mc_ptr);
     kittens::detail::vmm::vm_unmap(input.mc_ptr, d_i_mc_alloc_size);
     kittens::detail::vmm::vm_unmap(output.mc_ptr, d_o_mc_alloc_size);
     for (int dev_idx = 0; dev_idx < NUM_DEVICES; ++dev_idx) {

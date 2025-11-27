@@ -9,10 +9,10 @@
 #include "register/register.cuh"
 #include "shared/shared.cuh"
 #include "global/global.cuh"
-#if defined(KITTENS_HOPPER) || defined(KITTENS_BLACKWELL)
+#if KITTENS_ARCH >= 900
 #include "device/device.cuh"
 #endif
-#ifdef KITTENS_BLACKWELL
+#if KITTENS_ARCH >= 1000
 #include "tensor/tensor.cuh"
 #endif
 

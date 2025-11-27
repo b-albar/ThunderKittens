@@ -5,12 +5,12 @@
 template<typename T>
 struct test_load { // load with TMA, write out normally
     using dtype = T;
-    template<int H, int W, int NW> using valid = std::bool_constant< 
-        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 ) && ( ( sizeof(T) != 1 ) || W%2 == 0 ) 
+    template<int H, int W, int NW> using valid = std::bool_constant<
+        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 ) && ( ( sizeof(T) != 1 ) || W%2 == 0 )
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "tma_load_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "tma_load_gmem=half" :
-                                                        #ifdef KITTENS_HOPPER
+                                                        #if KITTENS_ARCH == 900
                                                       std::is_same_v<T, kittens::fp8e4m3> ? "tma_load_gmem=fp8e4m3":
                                                       std::is_same_v<T, kittens::fp8e5m2> ? "tma_load_gmem=fp8e5m2":
                                                         #endif
@@ -23,8 +23,8 @@ struct test_load { // load with TMA, write out normally
         extern __shared__ kittens::alignment_dummy __shm[]; // this is the CUDA shared memory
         kittens::tma_swizzle_allocator al((int*)&__shm[0]);
         kittens::st<T, 16*H, 16*W> (&shared_tile)[2][2] = al.allocate<kittens::st<T, 16*H, 16*W>, 2, 2>(); // assuming compile-time known dimensions
-        
-        __shared__ kittens::semaphore smem_semaphore; 
+
+        __shared__ kittens::semaphore smem_semaphore;
         kittens::warp::init_semaphore(smem_semaphore, 0, 1);
         __syncwarp();
         for(int a = 0; a < input.batch(); a++) for(int b = 0; b < input.depth(); b++) {
@@ -44,7 +44,7 @@ template<typename T>
 struct test_load_oob { // load oob memory via TMA
     using dtype = T;
     template<int H, int W, int NW> using valid = std::bool_constant<
-        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 ) && ( ( sizeof(T) != 1 ) || W%2 == 0 ) 
+        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 ) && ( ( sizeof(T) != 1 ) || W%2 == 0 )
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "tma_load_oob_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "tma_load_oob_gmem=half" :
@@ -67,9 +67,9 @@ struct test_load_oob { // load oob memory via TMA
             kittens::warp::one(reg_tile);
             kittens::warp::store(shared_tile[i][j], reg_tile);
         }
-        __syncthreads(); 
-        
-        __shared__ kittens::semaphore smem_semaphore; 
+        __syncthreads();
+
+        __shared__ kittens::semaphore smem_semaphore;
         kittens::warp::init_semaphore(smem_semaphore, 0, 1);
         __syncwarp();
         for(int a = 0; a < input.batch(); a++) for(int b = 0; b < input.depth(); b++) {
@@ -89,11 +89,11 @@ template<typename T>
 struct test_store { // load normally, store with TMA
     using dtype = T;
     template<int H, int W, int NW> using valid = std::bool_constant<
-        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 )  && ( ( sizeof(T) != 1 ) || W%2 == 0 ) 
+        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 )  && ( ( sizeof(T) != 1 ) || W%2 == 0 )
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "tma_store_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "tma_store_gmem=half" :
-                                                      #ifdef KITTENS_HOPPER
+                                                      #if KITTENS_ARCH == 900
                                                       std::is_same_v<T, kittens::fp8e4m3> ? "tma_load_gmem=fp8e4m3":
                                                       std::is_same_v<T, kittens::fp8e5m2> ? "tma_load_gmem=fp8e5m2":
                                                       #endif
@@ -124,11 +124,11 @@ template<typename T>
 struct test_store_add_reduce {
     using dtype = T;
     template<int H, int W, int NW> using valid = std::bool_constant<
-        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 )  && ( sizeof(T) != 1 ) // not supported for fp8 
+        ( NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 )  && ( sizeof(T) != 1 ) // not supported for fp8
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "tma_store_add_reduce_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "tma_store_add_reduce_gmem=half" :
-                                                      #ifdef KITTENS_HOPPER
+                                                      #if KITTENS_ARCH == 900
                                                       std::is_same_v<T, kittens::fp8e4m3> ? "tma_load_gmem=fp8e4m3":
                                                       std::is_same_v<T, kittens::fp8e5m2> ? "tma_load_gmem=fp8e5m2":
                                                         #endif
@@ -137,7 +137,7 @@ struct test_store_add_reduce {
     template<int H, int W, int NW, kittens::ducks::gl::all GL> __host__ static void host_func(const std::vector<float> &i_ref, std::vector<float> &o_ref) {
         // i_ref is reduced onto output
         for (int i = 0; i < o_ref.size(); i++) {
-            o_ref[i] = i_ref[i] + i_ref[i]; 
+            o_ref[i] = i_ref[i] + i_ref[i];
         }
     }
     template<int H, int W, int NW, kittens::ducks::gl::all GL>
@@ -164,11 +164,11 @@ template<typename T>
 struct test_store_min_reduce {
     using dtype = T;
     template<int H, int W, int NW> using valid = std::bool_constant<
-        ( !std::is_same_v<T, float> && NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 )  && ( sizeof(T) != 1 ) // not supported for fp8 
+        ( !std::is_same_v<T, float> && NW == 1 && W*H*sizeof(dtype)*256*4<=kittens::MAX_SHARED_MEMORY-1024 )  && ( sizeof(T) != 1 ) // not supported for fp8
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "tma_store_min_reduce_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "tma_store_min_reduce_gmem=half" :
-                                                      #ifdef KITTENS_HOPPER
+                                                      #if KITTENS_ARCH == 900
                                                       std::is_same_v<T, kittens::fp8e4m3> ? "tma_load_gmem=fp8e4m3":
                                                       std::is_same_v<T, kittens::fp8e5m2> ? "tma_load_gmem=fp8e5m2":
                                                         #endif
@@ -182,7 +182,7 @@ struct test_store_min_reduce {
     template<int H, int W, int NW, kittens::ducks::gl::all GL>
     __device__ static void device_func(const GL &input, const GL &output) {
         extern __shared__ kittens::alignment_dummy __shm[]; // this is the CUDA shared memory
-        kittens::tma_swizzle_allocator al((int*)&__shm[0]); 
+        kittens::tma_swizzle_allocator al((int*)&__shm[0]);
         kittens::st<T, 16*H, 16*W> (&shared_tile)[2][2] = al.allocate<kittens::st<T, 16*H, 16*W>, 2, 2>();
         __syncwarp();
         for(int a = 0; a < input.batch(); a++) for(int b = 0; b < input.depth(); b++) {
@@ -207,7 +207,7 @@ struct test_store_max_reduce {
     >;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "tma_store_max_reduce_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "tma_store_max_reduce_gmem=half" :
-                                                      #ifdef KITTENS_HOPPER
+                                                      #if KITTENS_ARCH == 900
                                                       std::is_same_v<T, kittens::fp8e4m3> ? "tma_load_gmem=fp8e4m3":
                                                       std::is_same_v<T, kittens::fp8e5m2> ? "tma_load_gmem=fp8e5m2":
                                                         #endif
@@ -257,8 +257,8 @@ struct tma_wrapper_2d {
             std::vector<float> i_ref(SIZE);
             std::vector<float> o_ref(SIZE);
 
-            initialize<dtype, initializers::RANDOM>(&d_i, &d_o, i_ref, o_ref); 
-            
+            initialize<dtype, initializers::RANDOM>(&d_i, &d_o, i_ref, o_ref);
+
             // make descriptors
             using GL = typename kittens::gl<dtype, -1, -1, R*H*16, C*W*16, kittens::st<dtype, 16*H, 16*W>>;
             GL input(d_i, B, D, nullptr, nullptr);
@@ -290,7 +290,7 @@ struct tma_sweep_gmem_type_2d {
         tma_sweep_size_2d<test<float>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         tma_sweep_size_2d<test<kittens::bf16>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         tma_sweep_size_2d<test<kittens::half>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
-        #ifdef KITTENS_HOPPER
+        #if KITTENS_ARCH == 900
         tma_sweep_size_2d<test<kittens::fp8e4m3>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         tma_sweep_size_2d<test<kittens::fp8e5m2>, MAX_H, MAX_W, NUM_WORKERS, args...>::run(results);
         #endif
@@ -302,7 +302,7 @@ template<template<typename> typename test, int MAX_H=8, int MAX_W=8, typename...
 void thread::memory::tile::tma::tests(test_data &results) {
     std::cout << " ----- Starting ops/thread/memory/tile/tma tests! -----\n" << std::endl;
     constexpr int SIZE = INTENSITY_1 ? 2  :
-                         INTENSITY_2 ? 4  : 
+                         INTENSITY_2 ? 4  :
                          INTENSITY_3 ? 8  :
                          INTENSITY_4 ? 16 : -1;
 

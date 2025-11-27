@@ -22,13 +22,13 @@ namespace kittens {
 namespace ducks {
 /**
  * @namespace rt
- * 
+ *
  * @brief The namespace where concepts and abstract types for register tiles live.
  */
 namespace rt {
 /**
  * @brief A dummy type used to identify register tiles.
- * 
+ *
  * For a type to quack like an rt, it should define its identifier as ducks::rt::identifier.
  * If a type quacks like ducks::rt::identifier, it will be treated as an rt by compiler checks.
  */
@@ -78,7 +78,7 @@ concept col_layout = all<T> && std::is_same_v<typename T::layout, ducks::rt_layo
  * for operations on tiles that are composed of smaller subtiles. It supports both
  * row-major and column-major layouts and includes helper structs for type inference
  * in vector maps.
- * 
+ *
  * In general, you probably want a row-major tile, unless you specifically want to call mma
  */
 template<typename _T, int _rows, int _cols, ducks::rt_layout::all _layout=ducks::rt_layout::row>
@@ -145,7 +145,7 @@ struct rt {
 template<int _r, int _c, ducks::rt_layout::all layout=ducks::rt_layout::row> using rt_fl = rt<float, _r, _c, layout>;
 template<int _r, int _c, ducks::rt_layout::all layout=ducks::rt_layout::row> using rt_bf = rt<bf16,  _r, _c, layout>;
 template<int _r, int _c, ducks::rt_layout::all layout=ducks::rt_layout::row> using rt_hf = rt<half,  _r, _c, layout>;
-#ifdef KITTENS_HOPPER
+#if KITTENS_ARCH == 900
 template<int _r, int _c, ducks::rt_layout::all layout=ducks::rt_layout::row> using rt_fp8e4m3 = rt<fp8e4m3,  _r, _c, layout>;
 template<int _r, int _c, ducks::rt_layout::all layout=ducks::rt_layout::row> using rt_fp8e5m2 = rt<fp8e5m2,  _r, _c, layout>;
 template<int _r, int _c, ducks::rt_layout::all layout=ducks::rt_layout::row> using rt_fp8e8m0 = rt<fp8e8m0,  _r, _c, layout>;

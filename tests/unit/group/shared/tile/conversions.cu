@@ -11,7 +11,7 @@ struct test_shared_copy {
     template<int H, int W, int NW, gl_t GL> __device__ static void device_func(const GL &input, const GL &output) {
         using G = kittens::group<NW>;
         extern __shared__ kittens::alignment_dummy __shm[]; // this is the CUDA shared memory
-        kittens::shared_allocator al((int*)&__shm[0]); 
+        kittens::shared_allocator al((int*)&__shm[0]);
         kittens::st_bf<16*H, 16*W> &t1 = al.allocate<kittens::st_bf<16*H, 16*W>>();
         kittens::st_bf<16*H, 16*W> &t2 = al.allocate<kittens::st_bf<16*H, 16*W>>();
         G::load(t2, input, {});
@@ -27,12 +27,12 @@ struct test_subtile {
     using dtype = T;
     template<int H, int W, int NW, typename _ST_H, typename _ST_W> using valid = std::bool_constant<(
         NW == 1 && W*H<=64
-        && (H % _ST_H::value == 0 && W % _ST_W::value == 0 ) 
+        && (H % _ST_H::value == 0 && W % _ST_W::value == 0 )
         && sizeof(dtype) != 1
     )>;
     static inline const std::string test_identifier = std::is_same_v<T, kittens::bf16> ? "shared_subtile_gmem=bf16" :
                                                       std::is_same_v<T, kittens::half> ? "shared_subtile_gmem=half" :
-                                                      #ifdef KITTENS_HOPPER
+                                                      #if KITTENS_ARCH == 900
                                                       std::is_same_v<T, kittens::fp8e4m3> ? "shared_subtile_gmem=fp8e4m3" :
                                                       std::is_same_v<T, kittens::fp8e5m2> ? "shared_subtile_gmem=fp8e5m2" :
                                                       #endif
@@ -46,7 +46,7 @@ struct test_subtile {
     template<int H, int W, int NW, gl_t GL, typename _ST_H, typename _ST_W> __device__ static void device_func(const GL &input, const GL &output) {
         constexpr int ST_H = _ST_H::value, ST_W = _ST_W::value;
         extern __shared__ kittens::alignment_dummy __shm[]; // this is the CUDA shared memory
-        kittens::shared_allocator al((int*)&__shm[0]); 
+        kittens::shared_allocator al((int*)&__shm[0]);
         kittens::st<dtype, 16*H, 16*W> &t = al.allocate<kittens::st<dtype, 16*H, 16*W>>();
         kittens::warp::load(t, input, {});
         __syncwarp();
@@ -68,7 +68,7 @@ struct test_subtile {
 void group::shared::tile::conversions::tests(test_data &results) {
     std::cout << " ----- Starting ops/group/shared/conversions tests! -----\n" << std::endl;
     constexpr int SIZE = INTENSITY_1 ? 2  :
-                         INTENSITY_2 ? 4  : 
+                         INTENSITY_2 ? 4  :
                          INTENSITY_3 ? 8  :
                          INTENSITY_4 ? 16 : -1;
 
